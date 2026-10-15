@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": [
     "schema_version", "canonical_player_id", "source", "source_record_id", "league_type",
-    "league", "season_start_year", "games", "minutes", "pts", "reb", "ast", "stl",
+    "league", "team", "season_start_year", "games", "minutes", "pts", "reb", "ast", "stl",
     "blk", "three_pm", "turnovers", "fgm", "fga", "ftm", "fta"
   ],
   "properties": {
@@ -16,6 +16,7 @@
     "source_record_id": { "type": "string", "minLength": 1 },
     "league_type": { "enum": ["NBA", "COLLEGE", "INTERNATIONAL"] },
     "league": { "type": "string", "minLength": 1 },
+    "team": { "type": "string", "minLength": 1 },
     "season_start_year": { "type": "integer", "minimum": 1946, "maximum": 2100 },
     "games": { "type": "integer", "minimum": 0 },
     "minutes": { "$ref": "#/$defs/nonNegativeNumber" },

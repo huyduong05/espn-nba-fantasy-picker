@@ -82,6 +82,25 @@ Same-day runs verify and reuse cached files. Add `--refresh` to a fetch command 
 create a new timestamped immutable batch. Data acquisition is the only phase that
 requires network access; draft-time inference will use local artifacts.
 
+## Phase 2 normalization and identity resolution
+
+Build the local processed datasets from the verified snapshots:
+
+```bash
+.venv/bin/fantasy-picker data normalize
+```
+
+The command writes ignored local artifacts under `data/processed/`: canonical
+players, normalized per-game season statistics, active NBA eligibility, source
+provenance, data-quality results, and an unresolved-match report. It is safe to
+rerun: existing canonical IDs are retained from the local player registry.
+
+`config/identity-review.yaml` contains reviewed NCAA-to-NBA pairs and optional
+manual corrections. Exact normalized names alone never cause a merge: automated
+links also require a matching draft year and school. NCAA source rows that lack a
+provider player ID are retained under a derived unresolved key, never linked to
+an NBA player automatically, and counted in the quality report.
+
 ## Contract ownership
 
 The JSON files in `schemas/v1/` are the source of truth for records exchanged by

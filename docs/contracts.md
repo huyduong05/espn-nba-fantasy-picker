@@ -38,6 +38,21 @@ Normalized or fuzzy names are candidate-generation aids only. Code must never
 silently merge two players from a name match. Accents, punctuation, suffixes, and
 duplicate names are therefore preserved in source records and reviewed mappings.
 
+## Normalized datasets
+
+`fantasy-picker data normalize` writes local JSONL datasets beneath
+`data/processed/`. NBA season averages retain their source player identifier and
+are normalized to start-year seasons. NCAA source end-year seasons are converted
+to start-year seasons; game rows are aggregated to per-game player-season records
+while retaining FGM/FGA and FTM/FTA.
+
+NBA IDs are the identity anchor. An NCAA record is linked automatically only when
+one exact normalized name candidate is corroborated by both draft year and
+school. `config/identity-review.yaml` can add an explicit reviewed mapping. NCAA
+rows without a provider player ID are retained with an `unidentified:` local key,
+reported as unresolved, and never eligible for automatic NBA matching. The
+normalization manifest lists every verified raw provenance manifest consumed.
+
 ## Cache and provenance
 
 Raw downloads live below `data/raw/<source_id>/<retrieval-date>/`. A downloaded
@@ -63,7 +78,9 @@ permission.
 - `league-config`: confirmed 12-team league and roster configuration.
 - `player`: canonical identity, aliases, birth date, and provider identifiers.
 - `eligibility`: dated, sourced NBA position eligibility.
-- `season-stat`: source-level per-game counting and shooting-volume record.
+- `season-stat`: source-level per-game counting and shooting-volume record. Team
+  identifiers are normalized into provider namespaces (for example, `NBA:LAL`
+  and `NCAA:duke`).
 - `injury`: injury, suspension, personal absence, or load-management event.
 - `draft-state`: extension-to-server state, including unresolved matches and
   manual overrides.

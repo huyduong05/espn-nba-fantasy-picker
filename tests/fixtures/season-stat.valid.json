@@ -5,6 +5,7 @@
   "source_record_id": "season-42",
   "league_type": "NBA",
   "league": "NBA",
+  "team": "NBA:EXM",
   "season_start_year": 2025,
   "games": 75,
   "minutes": 34.2,

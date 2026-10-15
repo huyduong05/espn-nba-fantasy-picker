@@ -1,0 +1,40 @@
+schema_version: 1.0.0
+
+# Explicit corrections take precedence over automated matching. Keep this list
+# empty until a human has reviewed a source-to-source mapping.
+manual_mappings: []
+
+# Independently reviewed high-confidence NCAA-to-NBA pairs. The normalizer
+# measures automated matching accuracy against this sample and fails if any
+# pair is not linked. Source IDs are retained raw identifiers, not names.
+reviewed_pairs:
+  - nba_player_id: "1643411"
+    college_player_id: "10804651"
+  - nba_player_id: "1643417"
+    college_player_id: "10801397"
+  - nba_player_id: "1643409"
+    college_player_id: "11195975"
+  - nba_player_id: "1643414"
+    college_player_id: "10240660"
+  - nba_player_id: "1643415"
+    college_player_id: "10005889"
+  - nba_player_id: "1643416"
+    college_player_id: "10801170"
+  - nba_player_id: "1643412"
+    college_player_id: "10801173"
+  - nba_player_id: "1643512"
+    college_player_id: "9337135"
+  - nba_player_id: "1643520"
+    college_player_id: "10005894"
+  - nba_player_id: "1643408"
+    college_player_id: "10241545"
+  - nba_player_id: "1643536"
+    college_player_id: "10242552"
+  - nba_player_id: "1643509"
+    college_player_id: "10804689"
+  - nba_player_id: "1643419"
+    college_player_id: "10804713"
+  - nba_player_id: "1643413"
+    college_player_id: "10809734"
+  - nba_player_id: "1643410"
+    college_player_id: "10801790"

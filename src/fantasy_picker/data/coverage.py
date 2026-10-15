@@ -173,7 +173,8 @@ def _inspect_college(source_root: Path) -> list[dict[str, Any]]:
                 "byte_count": data_path.stat().st_size,
                 "records": records,
                 "fields": fields,
-                "required_fields_present": set(fields) >= {
+                "required_fields_present": set(fields)
+                >= {
                     "player_id",
                     "player",
                     "clean_name",

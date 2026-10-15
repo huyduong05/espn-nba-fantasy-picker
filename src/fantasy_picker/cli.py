@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from fantasy_picker.contracts import SCHEMA_NAMES, load_schema, load_yaml, repository_root, validate
 from fantasy_picker.data.coverage import write_coverage_report
 from fantasy_picker.data.http import AcquisitionError, HttpClient
+from fantasy_picker.data.normalize import NormalizationError, normalize_cached_data
 from fantasy_picker.data.snapshots import SnapshotStore
 from fantasy_picker.data.sources import (
     AcquisitionSummary,
@@ -87,6 +88,15 @@ def build_parser() -> argparse.ArgumentParser:
     _add_refresh_option(all_parser)
     data_subparsers.add_parser("coverage", help="write a coverage report for cached data")
     data_subparsers.add_parser("sources", help="print the reviewed source catalog")
+    normalize_parser = data_subparsers.add_parser(
+        "normalize", help="normalize cached snapshots into local processed datasets"
+    )
+    normalize_parser.add_argument(
+        "--identity-review",
+        type=str,
+        default="config/identity-review.yaml",
+        help="repository-relative reviewed identity mappings and sample",
+    )
     return parser
 
 
@@ -116,6 +126,15 @@ def _run_data_command(arguments: argparse.Namespace) -> int:
         path = write_coverage_report(root)
         print(path)
         print(path.read_text(), end="")
+        return 0
+    if arguments.data_command == "normalize":
+        review_path = root / arguments.identity_review
+        try:
+            result = normalize_cached_data(root, review_path)
+        except (NormalizationError, OSError, ValueError) as error:
+            print(f"Normalization failed: {error}")
+            return 2
+        print(json.dumps(result["quality"], indent=2))
         return 0
 
     batch = datetime.now(UTC).strftime("%Y-%m-%dT%H%M%SZ") if arguments.refresh else None

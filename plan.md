@@ -190,6 +190,12 @@ Completion gate:
 
 ### Phase 2 — Normalization and player identity resolution
 
+Status: **Complete (2026-10-15).** The local normalizer emits validated canonical
+players, per-game NBA and NCAA season records, eligibility, provenance, quality,
+and unresolved-match artifacts. A 15-pair reviewed NCAA↔NBA sample matched at
+100%; 16,315 NCAA rows without provider IDs are retained with explicitly
+unresolved local keys and are never auto-linked.
+
 Tasks:
 
 - Normalize season labels, teams, leagues, positions, units, and stat names.
