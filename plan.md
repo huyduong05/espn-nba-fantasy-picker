@@ -284,6 +284,12 @@ Completion gate:
 
 ### Phase 6 — Nine-category roster evaluator
 
+Status: **Complete (2026-10-15).** The local evaluator builds a seeded,
+position-valid starters-only reference distribution and returns deterministic
+per-category expected-win deltas for each candidate. Shooting percentages use
+aggregate makes and attempts, turnovers are reversed, and Phase 5 availability
+penalties remain separate for Phase 7.
+
 Tasks:
 
 - Calculate team totals for counting categories from projected per-game production.

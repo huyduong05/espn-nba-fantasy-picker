@@ -45,6 +45,16 @@ from fantasy_picker.models.rookies import (
     load_phase4_config,
     save_phase4_artifacts,
 )
+from fantasy_picker.ranking.evaluator import (
+    EvaluatorError,
+    build_reference_distribution,
+    evaluate_candidates,
+    load_evaluator_config,
+    load_projections,
+    load_reference_distribution,
+    write_candidate_evaluations,
+    write_reference_distribution,
+)
 
 
 def validate_contracts() -> int:
@@ -163,6 +173,32 @@ def build_parser() -> argparse.ArgumentParser:
     injury_score_parser.add_argument(
         "--output", default="artifacts/phase5/injury_assessments.jsonl"
     )
+    ranking_parser = subparsers.add_parser(
+        "ranking", help="build and use the Phase 6 nine-category roster evaluator"
+    )
+    ranking_subparsers = ranking_parser.add_subparsers(dest="ranking_command", required=True)
+    reference_parser = ranking_subparsers.add_parser(
+        "build-reference", help="build the offline starter-lineup reference distribution"
+    )
+    reference_parser.add_argument(
+        "--projections", default="artifacts/phase4/rookie_adjusted_projections.jsonl"
+    )
+    reference_parser.add_argument("--eligibility", default="data/processed/eligibility.jsonl")
+    reference_parser.add_argument("--config", default="config/roster-evaluator.yaml")
+    reference_parser.add_argument(
+        "--output", default="artifacts/phase6/reference_distribution.json"
+    )
+    evaluate_parser = ranking_subparsers.add_parser(
+        "evaluate", help="evaluate remaining players from a validated draft-state JSON file"
+    )
+    evaluate_parser.add_argument(
+        "--projections", default="artifacts/phase4/rookie_adjusted_projections.jsonl"
+    )
+    evaluate_parser.add_argument(
+        "--reference", default="artifacts/phase6/reference_distribution.json"
+    )
+    evaluate_parser.add_argument("--draft-state", required=True)
+    evaluate_parser.add_argument("--output", default="artifacts/phase6/candidate_evaluations.json")
     return parser
 
 
@@ -176,6 +212,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_model_command(arguments)
     if arguments.command == "injury":
         return _run_injury_command(arguments)
+    if arguments.command == "ranking":
+        return _run_ranking_command(arguments)
     raise AssertionError(f"Unhandled command: {arguments.command}")
 
 
@@ -263,6 +301,52 @@ def _run_injury_command(arguments: argparse.Namespace) -> int:
     except (InjuryScoringError, OSError, ValueError) as error:
         print(f"Injury scoring failed: {error}")
         return 2
+
+
+def _run_ranking_command(arguments: argparse.Namespace) -> int:
+    root = repository_root()
+    try:
+        projections = load_projections(root / arguments.projections)
+        if arguments.ranking_command == "build-reference":
+            eligibility = _load_jsonl(root / arguments.eligibility)
+            reference = build_reference_distribution(
+                projections,
+                eligibility,
+                load_evaluator_config(root / arguments.config),
+            )
+            output = root / arguments.output
+            write_reference_distribution(output, reference)
+            print(
+                json.dumps(
+                    {
+                        "reference": output.as_posix(),
+                        "player_pool_count": reference["player_pool_count"],
+                        "reference_roster_count": reference["reference_roster_count"],
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+        if arguments.ranking_command == "evaluate":
+            state_path = root / arguments.draft_state
+            if not state_path.is_file():
+                raise EvaluatorError(f"Missing draft state: {state_path}")
+            state = json.loads(state_path.read_text())
+            if not isinstance(state, dict):
+                raise EvaluatorError("Draft state must be a JSON object")
+            rows = evaluate_candidates(
+                state,
+                projections,
+                load_reference_distribution(root / arguments.reference),
+            )
+            output = root / arguments.output
+            write_candidate_evaluations(output, rows)
+            print(json.dumps({"evaluations": output.as_posix(), "count": len(rows)}, indent=2))
+            return 0
+    except (EvaluatorError, ProjectionError, OSError, ValueError) as error:
+        print(f"Roster evaluation failed: {error}")
+        return 2
+    raise AssertionError(f"Unhandled ranking command: {arguments.ranking_command}")
 
 
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:

@@ -296,8 +296,10 @@ def _is_current(event: Mapping[str, Any], as_of: date) -> bool:
 
 def _event_end_date(event: Mapping[str, Any]) -> date:
     end = event.get("end_date")
-    return date.fromisoformat(cast(str, end)) if end is not None else date.fromisoformat(
-        _required_text(event, "start_date")
+    return (
+        date.fromisoformat(cast(str, end))
+        if end is not None
+        else date.fromisoformat(_required_text(event, "start_date"))
     )
 
 

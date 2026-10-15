@@ -1,0 +1,10 @@
+# Phase 6 local, reproducible nine-category roster reference distribution.
+schema_version: "1.0.0"
+model_version: "phase_6_roster_evaluator_v1"
+team_count: 12
+roster_size: 13
+starter_count: 10
+top_player_count: 156
+simulations: 2000
+seed: 20261015
+optimization_passes: 2

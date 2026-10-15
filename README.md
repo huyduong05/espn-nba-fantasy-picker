@@ -56,6 +56,28 @@ Events must pass the shared `injury` schema and have reviewed canonical player
 IDs. The scoring rules are documented in `config/injury-risk.yaml` and never
 penalize a player by more than 15%.
 
+## Phase 6 roster evaluation
+
+Before a draft, build the local nine-category reference distribution from the
+Phase 4 projections and position eligibility. This offline preparation artifact
+is reused during draft-time evaluation:
+
+```bash
+.venv/bin/fantasy-picker ranking build-reference
+```
+
+Evaluate resolved remaining players from a versioned draft-state JSON file:
+
+```bash
+.venv/bin/fantasy-picker ranking evaluate --draft-state path/to/draft-state.json
+```
+
+The evaluator uses a valid ten-player starting lineup (`PG`, `SG`, `SF`, `PF`,
+`C`, `G`, `F`, and three `UTIL`), aggregate makes and attempts for shooting
+percentages, and lower-is-better turnovers. Its output contains per-category
+before/after values, expected category-win changes, lineup assignments, and
+reason codes for Phase 7; it does not apply injury penalties.
+
 ## Phase 1 data acquisition
 
 Review the source decisions and unresolved gaps in

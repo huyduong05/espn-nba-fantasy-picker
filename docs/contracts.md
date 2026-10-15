@@ -90,3 +90,8 @@ permission.
 - `provenance`: immutable raw snapshot metadata.
 - `source-catalog`: reviewed source status, coverage, access, licensing, and gaps.
 
+Phase 6 evaluator artifacts are local implementation artifacts rather than a
+cross-component public contract. They retain the projection/eligibility input
+fingerprint, deterministic simulation configuration, reference category means
+and standard deviations, and per-candidate category deltas for Phase 7.
+

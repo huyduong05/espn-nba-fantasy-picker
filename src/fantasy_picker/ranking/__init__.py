@@ -1,1 +1,1 @@
-"""Nine-category ranking package."""
+"""Nine-category ranking and roster-evaluation components."""

@@ -65,9 +65,7 @@ def test_recent_absences_and_recurring_descriptions_score_higher() -> None:
     recent = _single(
         _event("HISTORICAL", "INJURY", "2026-09-01", end="2026-09-15", games_missed=10)
     )
-    old = _single(
-        _event("HISTORICAL", "INJURY", "2023-09-01", end="2023-09-15", games_missed=10)
-    )
+    old = _single(_event("HISTORICAL", "INJURY", "2023-09-01", end="2023-09-15", games_missed=10))
     recurrence = _single(
         _event("HISTORICAL", "INJURY", "2026-09-01", end="2026-09-15", games_missed=10),
         _event("HISTORICAL", "INJURY", "2025-09-01", end="2025-09-15", games_missed=10),
