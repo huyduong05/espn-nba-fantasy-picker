@@ -12,6 +12,7 @@ dependencies = [
   "certifi>=2026.7.22",
   "jsonschema[format]>=4.23,<5",
   "PyYAML>=6.0,<7",
+  "scikit-learn>=1.6,<2",
 ]
 
 [project.optional-dependencies]

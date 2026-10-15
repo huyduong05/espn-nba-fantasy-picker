@@ -214,6 +214,11 @@ Completion gate:
 
 ### Phase 3 — Baseline projections and evaluation framework
 
+Status: **Complete (2026-10-15).** Walk-forward evaluation selected a
+gradient-boosted model for steals and retained documented simple baselines for
+the remaining statistics when the regression candidates did not improve
+validation MAE.
+
 Tasks:
 
 - Establish simple baselines such as latest-season values and minutes-weighted multi-season averages.

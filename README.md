@@ -101,6 +101,31 @@ links also require a matching draft year and school. NCAA source rows that lack 
 provider player ID are retained under a derived unresolved key, never linked to
 an NBA player automatically, and counted in the quality report.
 
+## Phase 3 baseline projections
+
+Train the local NBA-only baseline and regression models after normalization:
+
+```bash
+.venv/bin/fantasy-picker model train
+```
+
+This writes an ignored `artifacts/phase3/` bundle, metrics metadata, and a
+next-season per-game projection table. The comparison uses two walk-forward
+validation seasons and a later held-out test season; every feature for season
+`Y` uses NBA records from seasons before `Y` only. Each statistic selects the
+best validation method from latest-season and minutes-weighted-history
+baselines, a ridge regressor, and a deterministic gradient-boosted tree.
+
+To reproduce the saved projection table from a new process:
+
+```bash
+.venv/bin/fantasy-picker model project
+```
+
+The Phase 3 scope intentionally does not use current injuries, college or
+international translations, or guessed ages. Those inputs are handled in later
+phases; past NBA production profiles act as the initial role features.
+
 ## Contract ownership
 
 The JSON files in `schemas/v1/` are the source of truth for records exchanged by

@@ -20,6 +20,17 @@ from fantasy_picker.data.sources import (
     acquire_nba_reference_data,
     acquire_ncaa_player_boxes,
 )
+from fantasy_picker.models.projections import (
+    ProjectionError,
+    build_examples,
+    evaluate,
+    load_bundle,
+    load_nba_stats,
+    project,
+    save_artifacts,
+    train_bundle,
+    write_projection_table,
+)
 
 
 def validate_contracts() -> int:
@@ -97,6 +108,19 @@ def build_parser() -> argparse.ArgumentParser:
         default="config/identity-review.yaml",
         help="repository-relative reviewed identity mappings and sample",
     )
+    model_parser = subparsers.add_parser("model", help="train and run local projection models")
+    model_subparsers = model_parser.add_subparsers(dest="model_command", required=True)
+    train_parser = model_subparsers.add_parser(
+        "train", help="evaluate and save Phase 3 projections"
+    )
+    train_parser.add_argument("--stats", default="data/processed/season_stats.jsonl")
+    train_parser.add_argument("--output-dir", default="artifacts/phase3")
+    project_parser = model_subparsers.add_parser(
+        "project", help="write projections from a saved artifact"
+    )
+    project_parser.add_argument("--stats", default="data/processed/season_stats.jsonl")
+    project_parser.add_argument("--bundle", default="artifacts/phase3/projection_bundle.pkl")
+    project_parser.add_argument("--output", default="artifacts/phase3/projections.jsonl")
     return parser
 
 
@@ -106,7 +130,45 @@ def main(argv: list[str] | None = None) -> int:
         return validate_contracts()
     if arguments.command == "data":
         return _run_data_command(arguments)
+    if arguments.command == "model":
+        return _run_model_command(arguments)
     raise AssertionError(f"Unhandled command: {arguments.command}")
+
+
+def _run_model_command(arguments: argparse.Namespace) -> int:
+    root = repository_root()
+    stats_path = root / arguments.stats
+    try:
+        records = load_nba_stats(stats_path)
+        if arguments.model_command == "train":
+            examples = build_examples(records)
+            evaluation = evaluate(examples)
+            bundle = train_bundle(examples, evaluation)
+            output_dir = root / arguments.output_dir
+            paths = save_artifacts(output_dir, bundle, evaluation, stats_path)
+            projections_path = output_dir / "projections.jsonl"
+            write_projection_table(projections_path, project(records, bundle))
+            print(
+                json.dumps(
+                    {
+                        "artifacts": {key: value.as_posix() for key, value in paths.items()},
+                        "projections": projections_path.as_posix(),
+                        "evaluation": evaluation,
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+        if arguments.model_command == "project":
+            bundle = load_bundle(root / arguments.bundle)
+            output = root / arguments.output
+            write_projection_table(output, project(records, bundle))
+            print(output)
+            return 0
+    except (ProjectionError, OSError, ValueError) as error:
+        print(f"Projection modeling failed: {error}")
+        return 2
+    raise AssertionError(f"Unhandled model command: {arguments.model_command}")
 
 
 def _add_refresh_option(parser: argparse.ArgumentParser) -> None:
