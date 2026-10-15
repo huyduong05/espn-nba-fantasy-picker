@@ -259,6 +259,13 @@ Completion gate:
 
 ### Phase 5 — Injury and availability scoring
 
+Status: **Complete (2026-10-15).** The local Phase 5 scorer emits an
+inspectable, configuration-driven 0–15% recommendation penalty from
+identity-resolved absence events. It keeps raw per-game projections intact,
+accounts for current status, return timelines, recurrence, recency-weighted
+games missed, non-injury absences, and IR eligibility, while explicitly
+labeling unavailable current-health data.
+
 Tasks:
 
 - Define the injury/absence event schema.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +21,13 @@ from fantasy_picker.data.sources import (
     acquire_nba_history,
     acquire_nba_reference_data,
     acquire_ncaa_player_boxes,
+)
+from fantasy_picker.models.injuries import (
+    InjuryScoringError,
+    load_injury_config,
+    load_injury_events,
+    score_injury_events,
+    write_injury_assessments,
 )
 from fantasy_picker.models.projections import (
     ProjectionError,
@@ -138,6 +145,24 @@ def build_parser() -> argparse.ArgumentParser:
     phase4_parser.add_argument("--bundle", default="artifacts/phase3/projection_bundle.pkl")
     phase4_parser.add_argument("--config", default="config/rookie-projection.yaml")
     phase4_parser.add_argument("--output-dir", default="artifacts/phase4")
+    injury_parser = subparsers.add_parser(
+        "injury", help="create local Phase 5 injury and availability assessments"
+    )
+    injury_subparsers = injury_parser.add_subparsers(dest="injury_command", required=True)
+    injury_score_parser = injury_subparsers.add_parser(
+        "score", help="score identity-resolved injury events for a draft-date snapshot"
+    )
+    injury_score_parser.add_argument("--events", default="data/processed/injury_events.jsonl")
+    injury_score_parser.add_argument(
+        "--players",
+        default="data/processed/eligibility.jsonl",
+        help="JSONL with canonical_player_id records; includes players with no injury event",
+    )
+    injury_score_parser.add_argument("--as-of", required=True, help="snapshot date (YYYY-MM-DD)")
+    injury_score_parser.add_argument("--config", default="config/injury-risk.yaml")
+    injury_score_parser.add_argument(
+        "--output", default="artifacts/phase5/injury_assessments.jsonl"
+    )
     return parser
 
 
@@ -149,6 +174,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_data_command(arguments)
     if arguments.command == "model":
         return _run_model_command(arguments)
+    if arguments.command == "injury":
+        return _run_injury_command(arguments)
     raise AssertionError(f"Unhandled command: {arguments.command}")
 
 
@@ -216,6 +243,28 @@ def _run_model_command(arguments: argparse.Namespace) -> int:
     raise AssertionError(f"Unhandled model command: {arguments.model_command}")
 
 
+def _run_injury_command(arguments: argparse.Namespace) -> int:
+    if arguments.injury_command != "score":
+        raise AssertionError(f"Unhandled injury command: {arguments.injury_command}")
+    root = repository_root()
+    try:
+        events = load_injury_events(root / arguments.events)
+        player_ids = _load_canonical_player_ids(root / arguments.players)
+        rows = score_injury_events(
+            events,
+            date.fromisoformat(arguments.as_of),
+            load_injury_config(root / arguments.config),
+            player_ids=player_ids,
+        )
+        output = root / arguments.output
+        write_injury_assessments(output, rows)
+        print(json.dumps({"assessments": output.as_posix(), "count": len(rows)}, indent=2))
+        return 0
+    except (InjuryScoringError, OSError, ValueError) as error:
+        print(f"Injury scoring failed: {error}")
+        return 2
+
+
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.is_file():
         raise ProjectionError(f"Missing processed dataset: {path}")
@@ -223,6 +272,21 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     if not all(isinstance(record, dict) for record in records):
         raise ProjectionError(f"Expected JSON object records in {path}")
     return records
+
+
+def _load_canonical_player_ids(path: Path) -> list[str]:
+    if not path.is_file():
+        raise InjuryScoringError(f"Missing player dataset: {path}")
+    records = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    if not all(isinstance(record, dict) for record in records):
+        raise InjuryScoringError(f"Expected JSON object records in {path}")
+    ids = []
+    for index, record in enumerate(records, start=1):
+        player_id = record.get("canonical_player_id")
+        if not isinstance(player_id, str):
+            raise InjuryScoringError(f"Player record {index} in {path} lacks canonical_player_id")
+        ids.append(player_id)
+    return ids
 
 
 def _add_refresh_option(parser: argparse.ArgumentParser) -> None:

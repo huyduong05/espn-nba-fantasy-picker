@@ -39,6 +39,23 @@ Validate the shared contracts and example league configuration directly:
 Phase 0 does not download production data, select a data provider, train a model,
 or communicate with ESPN. Those choices remain gated by later phases.
 
+## Phase 5 injury and availability assessments
+
+Once identity-resolved injury events are available locally, generate a dated
+offline recommendation adjustment. This preserves raw per-game projections and
+writes only the bounded injury penalty, data status, component features, and
+reason codes:
+
+```bash
+.venv/bin/fantasy-picker injury score --as-of 2026-10-15
+```
+
+The default inputs are `data/processed/injury_events.jsonl` and active-player
+records in `data/processed/eligibility.jsonl`; override either path as needed.
+Events must pass the shared `injury` schema and have reviewed canonical player
+IDs. The scoring rules are documented in `config/injury-risk.yaml` and never
+penalize a player by more than 15%.
+
 ## Phase 1 data acquisition
 
 Review the source decisions and unresolved gaps in

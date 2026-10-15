@@ -1,0 +1,31 @@
+# Phase 5 injury and availability scoring configuration.  Values are fractions
+# of a recommendation score, not changes to the underlying per-game projection.
+schema_version: "1.0.0"
+model_version: "phase_5_injury_availability_v1"
+historical_window_days: 1460
+recency_half_life_days: 365
+games_missed:
+  normalizing_games: 20
+  maximum_penalty: 0.055
+recurrence:
+  events_for_maximum: 3
+  maximum_penalty: 0.025
+current_status_penalties:
+  OUT: 0.080
+  DOUBTFUL: 0.065
+  QUESTIONABLE: 0.040
+  PROBABLE: 0.015
+  ACTIVE: 0.000
+  UNKNOWN: 0.020
+current_event_type_penalties:
+  INJURY: 0.000
+  SUSPENSION: 0.040
+  PERSONAL: 0.020
+  LOAD_MANAGEMENT: 0.025
+maximum_current_penalty: 0.100
+return_timeline_penalties:
+  within_7_days: 0.030
+  within_30_days: 0.020
+  beyond_30_days: 0.010
+ir_eligibility_reduction: 0.015
+maximum_penalty: 0.150

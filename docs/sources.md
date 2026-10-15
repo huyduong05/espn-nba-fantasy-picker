@@ -133,6 +133,21 @@ Current status may be acquired from the NBA's official injury reports under the
 same user-directed educational-use decision as NBA.com statistics. Those reports
 must remain separately labeled with NBA.com terms and cached before draft time.
 
+## Phase 5 availability scoring
+
+`config/injury-risk.yaml` defines a fully local, inspectable recommendation
+penalty. It uses recency-weighted historical games missed, repeated event
+descriptions, current status, reported return timeline, and current suspension,
+personal-absence, or load-management status. The result is bounded at 15% and
+does not modify projected per-game statistics. Confirmed current IR eligibility
+reduces the recommendation penalty by the configured amount.
+
+An absence of current data is emitted as `CURRENT_STATUS_UNAVAILABLE` and
+`NO_INJURY_DATA` or `HISTORICAL_ONLY`. It is neither evidence that a player is
+healthy nor a synthetic injury event. The historical Kaggle archive must be
+identity-resolved through a reviewed mapping before it enters this scorer;
+unmatched source names remain excluded rather than auto-linked.
+
 ## Refresh and provenance behavior
 
 - Raw files are stored under `data/raw/<source>/<batch>/` and excluded from Git.

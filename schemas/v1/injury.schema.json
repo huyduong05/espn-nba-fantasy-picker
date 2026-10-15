@@ -16,6 +16,7 @@
     "status": { "enum": ["HISTORICAL", "OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "ACTIVE", "UNKNOWN"] },
     "start_date": { "type": "string", "format": "date" },
     "end_date": { "type": ["string", "null"], "format": "date" },
+    "expected_return_date": { "type": ["string", "null"], "format": "date" },
     "games_missed": { "type": ["integer", "null"], "minimum": 0 },
     "ir_eligible": { "type": ["boolean", "null"] },
     "description": { "type": ["string", "null"] },

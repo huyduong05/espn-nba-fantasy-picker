@@ -81,7 +81,9 @@ permission.
 - `season-stat`: source-level per-game counting and shooting-volume record. Team
   identifiers are normalized into provider namespaces (for example, `NBA:LAL`
   and `NCAA:duke`).
-- `injury`: injury, suspension, personal absence, or load-management event.
+- `injury`: injury, suspension, personal absence, or load-management event. Current
+  events may include `expected_return_date`; a missing date means the timeline is
+  unknown, not that the player is available.
 - `draft-state`: extension-to-server state, including unresolved matches and
   manual overrides.
 - `recommendation`: server response with at most five explainable suggestions.
