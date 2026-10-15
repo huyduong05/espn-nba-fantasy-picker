@@ -35,6 +35,8 @@ The system will:
 
 - Use the five most recently completed NBA seasons.
 - Use the prior two college or international seasons for newly drafted players when available.
+- Limit international acquisition to rookies/newly drafted players on active NBA rosters.
+- Omit unsupported international leagues and flag the affected player as low-information.
 - Keep non-NBA history as an input after a player enters the NBA, but give NBA history greater weight.
 - Apply an initial 0.5 translation multiplier to college and international production.
 - Produce per-game projections.
@@ -47,6 +49,7 @@ The system will:
 - Also consider recurring injuries, current injuries, suspensions, personal absences, and load management.
 - Make the maximum injury-related recommendation penalty 15%.
 - Consider expected return dates and IR eligibility.
+- Use official NBA injury reports for current status under the educational-use source decision.
 - Keep the raw per-game projection separate from the injury-adjusted recommendation score.
 
 ### Runtime configuration
@@ -161,6 +164,12 @@ Completion gate:
 - No production data source or model choice is silently assumed.
 
 ### Phase 1 — Source research and historical data acquisition
+
+Status: **Complete (2026-10-15).** NBA.com educational snapshots and a CC0
+historical injury archive are locally cached with provenance. International
+coverage is intentionally measured as unavailable for the scoped rookie cohort:
+the documented policy omits unsupported leagues and flags affected players as
+low-information pending a future licensed-source decision.
 
 Tasks:
 

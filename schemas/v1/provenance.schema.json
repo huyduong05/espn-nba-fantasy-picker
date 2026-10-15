@@ -5,12 +5,13 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version", "snapshot_id", "source_id", "source_url", "retrieved_at",
+    "schema_version", "snapshot_id", "dataset_id", "source_id", "source_url", "retrieved_at",
     "local_path", "sha256", "byte_count", "media_type", "license", "notes"
   ],
   "properties": {
     "schema_version": { "const": "1.0.0" },
     "snapshot_id": { "type": "string", "pattern": "^snp_[0-9a-f]{32}$" },
+    "dataset_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
     "source_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
     "source_url": { "type": "string", "format": "uri" },
     "retrieved_at": { "type": "string", "format": "date-time" },

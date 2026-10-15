@@ -30,6 +30,11 @@ def test_example_league_config_matches_schema() -> None:
     validate(load_yaml(path), "league-config")
 
 
+def test_source_catalog_matches_schema() -> None:
+    path = repository_root() / "config" / "sources.yaml"
+    validate(load_yaml(path), "source-catalog")
+
+
 def test_contract_rejects_unknown_properties() -> None:
     path = repository_root() / "tests" / "fixtures" / "player.valid.json"
     player = json.loads(path.read_text())

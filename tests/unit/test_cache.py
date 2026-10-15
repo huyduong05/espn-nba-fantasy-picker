@@ -14,6 +14,7 @@ def test_build_and_verify_provenance(tmp_path) -> None:  # type: ignore[no-untyp
         snapshot,
         repository_root=tmp_path,
         source_id="example",
+        dataset_id="example_dataset",
         source_url="https://example.com/data.csv",
         media_type="text/csv",
         retrieved_at=datetime(2026, 10, 15, 12, 0, tzinfo=UTC),
@@ -34,6 +35,7 @@ def test_provenance_rejects_files_outside_raw_directory(tmp_path) -> None:  # ty
             snapshot,
             repository_root=tmp_path,
             source_id="example",
+            dataset_id="example_dataset",
             source_url="https://example.com/data.csv",
             media_type="text/csv",
         )

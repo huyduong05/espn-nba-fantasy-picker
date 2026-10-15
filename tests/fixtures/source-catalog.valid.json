@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "id": "example_source",
+      "name": "Fixture source",
+      "status": "OPTIONAL",
+      "domains": ["NBA_STATS"],
+      "coverage": "Fixture coverage only.",
+      "access": "No network access; fixture only.",
+      "license": null,
+      "terms_url": null,
+      "documentation_url": "https://example.com/docs",
+      "limitations": ["Not a production source."]
+    }
+  ]
+}

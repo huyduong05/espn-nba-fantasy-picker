@@ -15,6 +15,7 @@ data/interim/*
 !data/interim/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/coverage-report.json
 
 extension/dist/
 extension/node_modules/

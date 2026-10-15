@@ -9,6 +9,7 @@ description = "Local nine-category NBA fantasy draft recommendation service"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "certifi>=2026.7.22",
   "jsonschema[format]>=4.23,<5",
   "PyYAML>=6.0,<7",
 ]

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/source-catalog.schema.json",
+  "title": "Acquisition source catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "sources"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id", "name", "status", "domains", "coverage", "access", "license",
+          "terms_url", "documentation_url", "limitations"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["SELECTED", "OPTIONAL", "REJECTED", "DECISION_REQUIRED"] },
+          "domains": {
+            "type": "array",
+            "items": { "enum": ["NBA_STATS", "PLAYER_IDENTITY", "ELIGIBILITY", "COLLEGE", "INTERNATIONAL", "CURRENT_INJURIES", "HISTORICAL_INJURIES"] },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "coverage": { "type": "string", "minLength": 1 },
+          "access": { "type": "string", "minLength": 1 },
+          "license": { "type": ["string", "null"] },
+          "terms_url": { "type": ["string", "null"], "format": "uri" },
+          "documentation_url": { "type": "string", "format": "uri" },
+          "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    }
+  }
+}

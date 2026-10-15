@@ -14,6 +14,7 @@ from fantasy_picker.contracts import validate
 class ProvenanceManifest(TypedDict):
     schema_version: str
     snapshot_id: str
+    dataset_id: str
     source_id: str
     source_url: str
     retrieved_at: str
@@ -38,6 +39,7 @@ def build_provenance(
     *,
     repository_root: Path,
     source_id: str,
+    dataset_id: str,
     source_url: str,
     media_type: str,
     retrieved_at: datetime | None = None,
@@ -58,6 +60,7 @@ def build_provenance(
     manifest = ProvenanceManifest(
         schema_version="1.0.0",
         snapshot_id=f"snp_{uuid4().hex}",
+        dataset_id=dataset_id,
         source_id=source_id,
         source_url=source_url,
         retrieved_at=timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z"),

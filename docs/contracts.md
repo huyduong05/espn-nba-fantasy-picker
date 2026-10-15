@@ -47,6 +47,7 @@ new snapshot rather than replacing the old one.
 Every snapshot manifest records:
 
 - A unique snapshot ID.
+- A stable dataset ID.
 - Source ID and exact URL.
 - UTC retrieval timestamp.
 - Repository-relative local path.
@@ -68,4 +69,5 @@ permission.
   manual overrides.
 - `recommendation`: server response with at most five explainable suggestions.
 - `provenance`: immutable raw snapshot metadata.
+- `source-catalog`: reviewed source status, coverage, access, licensing, and gaps.
 

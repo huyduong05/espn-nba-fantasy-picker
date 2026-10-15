@@ -1,6 +1,75 @@
 schema_version: 1.0.0
+sources:
+  - id: balldontlie_nba
+    name: BALLDONTLIE NBA API
+    status: OPTIONAL
+    domains: [NBA_STATS, PLAYER_IDENTITY, ELIGIBILITY, CURRENT_INJURIES]
+    coverage: NBA data from 1946 to current; season averages from 1996 to current.
+    access: API key required; GOAT tier for season averages and ALL-STAR or higher for injuries.
+    license: Provider terms expressly permit fantasy sports and model development.
+    terms_url: https://www.balldontlie.io/terms.html
+    documentation_url: https://docs.balldontlie.io/
+    limitations:
+      - Paid NBA GOAT access is required for the five-season aggregate download.
+      - Injury endpoint represents current status, not a complete historical event archive.
+      - Provider describes its data as unofficial and best-effort.
+      - The user chose NBA.com educational snapshots instead of supplying paid credentials.
 
-# Phase 1 will research and populate this list. Leaving it empty is intentional:
-# Phase 0 must not silently choose production data sources.
-sources: []
+  - id: sportsdataverse_ncaa
+    name: SportsDataverse NCAA men's basketball player box scores
+    status: SELECTED
+    domains: [COLLEGE, PLAYER_IDENTITY]
+    coverage: NCAA men's basketball player box scores from stats.ncaa.org; 51 seasons through 2025-26 at research time.
+    access: Public GitHub release assets; no key required.
+    license: CC BY 4.0; attribution required.
+    terms_url: https://github.com/sportsdataverse/sportsdataverse-data/blob/main/LICENSE.md
+    documentation_url: https://github.com/sportsdataverse/ncaa-mbb-hoops-data
+    limitations:
+      - Game-level data must be aggregated into season records in Phase 2.
+      - Coverage is NCAA men's basketball and does not represent every college system worldwide.
+      - Player-to-NBA identity links require conservative resolution in Phase 2.
+
+  - id: balldontlie_international
+    name: BALLDONTLIE international basketball APIs
+    status: DECISION_REQUIRED
+    domains: [INTERNATIONAL, PLAYER_IDENTITY]
+    coverage: Fifteen documented international competitions, including EuroLeague, EuroCup, ACB, BCL, and major domestic leagues.
+    access: Separate GOAT subscriptions per sport or an ALL-ACCESS subscription are required for player statistics.
+    license: Provider terms expressly permit fantasy sports and model development.
+    terms_url: https://www.balldontlie.io/terms.html
+    documentation_url: https://www.balldontlie.io/docs/
+    limitations:
+      - ALL-ACCESS was listed at USD 299.99 per month when researched on 2026-10-15.
+      - Acquisition scope is limited to rookies or newly drafted players on active NBA rosters.
+      - The qualifying league list must be derived from those players' career histories.
+      - Unsupported leagues are omitted and the affected player is marked low-information.
+
+  - id: kaggle_nba_injuries
+    name: NBA Injuries from 2010-2020 by Randall Hopkins
+    status: SELECTED
+    domains: [HISTORICAL_INJURIES]
+    coverage: Injury transactions from the start of 2010-11 through the end of 2019-20.
+    access: Public Kaggle dataset download; no credential required at research time.
+    license: 'CC0: Public Domain, as declared by the Kaggle publisher.'
+    terms_url: https://www.kaggle.com/terms
+    documentation_url: https://www.kaggle.com/datasets/ghopkins/nba-injuries-2010-2018
+    limitations:
+      - Coverage ends after 2019-20 and therefore cannot provide current injury status.
+      - The publisher states that the records were scraped from Pro Sports Transactions.
+      - Recent games missed must be derived from participation; missing events are not good health evidence.
+
+  - id: nba_stats
+    name: NBA.com Stats
+    status: SELECTED
+    domains: [NBA_STATS, PLAYER_IDENTITY, CURRENT_INJURIES]
+    coverage: Official historical NBA statistics, active-roster identity, and current injury reports.
+    access: Public website endpoints; selected by the user for a local educational side project.
+    license: NBA.com Terms of Use apply.
+    terms_url: https://www.nba.com/termsofuse
+    documentation_url: https://github.com/swar/nba_api/blob/master/docs/nba_api/stats/endpoints/leaguedashplayerstats.md
+    limitations:
+      - Current NBA.com terms prohibit use of NBA Statistics in connection with a fantasy game.
+      - Selection records the user's educational-project direction and is not legal advice or a rights grant.
+      - Snapshots remain separately labeled so they cannot be mistaken for permissively licensed data.
+      - Official injury reports are selected for current status, not historical recurrence coverage.
 

@@ -20,6 +20,7 @@ SCHEMA_NAMES = (
     "provenance",
     "recommendation",
     "season-stat",
+    "source-catalog",
 )
 
 

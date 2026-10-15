@@ -8,7 +8,8 @@ checkout.
 - `interim/`: reproducible normalized outputs that may still contain source IDs.
 - `processed/`: canonical, model-ready datasets.
 
-No downloader exists in Phase 0. Phase 1 will select and cite sources before it
-implements acquisition. Raw snapshots must follow the provenance and checksum
-rules in `docs/contracts.md`.
+Phase 1 acquisition commands are documented in the root README. Raw snapshots
+must follow the provenance and checksum rules in `docs/contracts.md`. The
+generated `coverage-report.json` measures the latest local batch and is ignored
+by Git because it describes local downloaded state.
 

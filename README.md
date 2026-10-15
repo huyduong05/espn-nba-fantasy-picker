@@ -39,6 +39,49 @@ Validate the shared contracts and example league configuration directly:
 Phase 0 does not download production data, select a data provider, train a model,
 or communicate with ESPN. Those choices remain gated by later phases.
 
+## Phase 1 data acquisition
+
+Review the source decisions and unresolved gaps in
+[docs/sources.md](docs/sources.md), then inspect the machine-readable catalog:
+
+```bash
+.venv/bin/fantasy-picker data sources
+```
+
+Download the two selected NCAA seasons. This source requires no credentials:
+
+```bash
+.venv/bin/fantasy-picker data fetch-college
+```
+
+Download five NBA.com season-average snapshots:
+
+```bash
+.venv/bin/fantasy-picker data fetch-nba-com
+.venv/bin/fantasy-picker data fetch-nba-roster
+```
+
+These user-selected educational snapshots are deliberately distinguished from
+permissively licensed data. NBA.com's current terms restrict using NBA Statistics
+in connection with a fantasy game; see [docs/sources.md](docs/sources.md) before
+using the files.
+
+Download the separately licensed CC0 historical injury archive:
+
+```bash
+.venv/bin/fantasy-picker data fetch-injuries
+```
+
+Generate a coverage report from the newest cached batch:
+
+```bash
+.venv/bin/fantasy-picker data coverage
+```
+
+Same-day runs verify and reuse cached files. Add `--refresh` to a fetch command to
+create a new timestamped immutable batch. Data acquisition is the only phase that
+requires network access; draft-time inference will use local artifacts.
+
 ## Contract ownership
 
 The JSON files in `schemas/v1/` are the source of truth for records exchanged by
