@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/player.schema.json",
+  "title": "Canonical player",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "canonical_player_id", "display_name", "birth_date", "aliases", "source_ids"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "canonical_player_id": { "type": "string", "pattern": "^plr_[0-9a-f]{32}$" },
+    "display_name": { "type": "string", "minLength": 1 },
+    "birth_date": { "type": ["string", "null"], "format": "date" },
+    "aliases": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "source_ids": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_-]*$" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    }
+  }
+}

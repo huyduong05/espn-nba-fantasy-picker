@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/injury.schema.json",
+  "title": "Injury or absence event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "event_id", "canonical_player_id", "event_type", "status",
+    "start_date", "end_date", "games_missed", "ir_eligible", "description", "source"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "event_id": { "type": "string", "pattern": "^evt_[0-9a-f]{32}$" },
+    "canonical_player_id": { "type": "string", "pattern": "^plr_[0-9a-f]{32}$" },
+    "event_type": { "enum": ["INJURY", "SUSPENSION", "PERSONAL", "LOAD_MANAGEMENT"] },
+    "status": { "enum": ["HISTORICAL", "OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "ACTIVE", "UNKNOWN"] },
+    "start_date": { "type": "string", "format": "date" },
+    "end_date": { "type": ["string", "null"], "format": "date" },
+    "games_missed": { "type": ["integer", "null"], "minimum": 0 },
+    "ir_eligible": { "type": ["boolean", "null"] },
+    "description": { "type": ["string", "null"] },
+    "source": { "type": "string", "minLength": 1 }
+  }
+}

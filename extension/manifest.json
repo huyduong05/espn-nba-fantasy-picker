@@ -1,0 +1,7 @@
+{
+  "manifest_version": 3,
+  "name": "ESPN NBA Fantasy Draft Assistant",
+  "version": "0.1.0",
+  "description": "Local-first nine-category draft recommendations.",
+  "permissions": []
+}

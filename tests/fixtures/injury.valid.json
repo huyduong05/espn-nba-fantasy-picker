@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "evt_fedcba9876543210fedcba9876543210",
+  "canonical_player_id": "plr_0123456789abcdef0123456789abcdef",
+  "event_type": "INJURY",
+  "status": "HISTORICAL",
+  "start_date": "2025-11-01",
+  "end_date": "2025-11-15",
+  "games_missed": 6,
+  "ir_eligible": true,
+  "description": "Fixture-only example",
+  "source": "example_source"
+}

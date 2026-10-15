@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "canonical_player_id": "plr_0123456789abcdef0123456789abcdef",
+  "source": "example_source",
+  "source_record_id": "season-42",
+  "league_type": "NBA",
+  "league": "NBA",
+  "season_start_year": 2025,
+  "games": 75,
+  "minutes": 34.2,
+  "pts": 24.1,
+  "reb": 6.3,
+  "ast": 7.1,
+  "stl": 1.3,
+  "blk": 0.4,
+  "three_pm": 2.8,
+  "turnovers": 3.0,
+  "fgm": 8.5,
+  "fga": 17.7,
+  "ftm": 4.3,
+  "fta": 5.0
+}

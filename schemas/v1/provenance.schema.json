@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/provenance.schema.json",
+  "title": "Raw snapshot provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "snapshot_id", "source_id", "source_url", "retrieved_at",
+    "local_path", "sha256", "byte_count", "media_type", "license", "notes"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "snapshot_id": { "type": "string", "pattern": "^snp_[0-9a-f]{32}$" },
+    "source_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+    "source_url": { "type": "string", "format": "uri" },
+    "retrieved_at": { "type": "string", "format": "date-time" },
+    "local_path": { "type": "string", "pattern": "^data/raw/" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "byte_count": { "type": "integer", "minimum": 0 },
+    "media_type": { "type": "string", "minLength": 1 },
+    "license": { "type": ["string", "null"] },
+    "notes": { "type": ["string", "null"] }
+  }
+}

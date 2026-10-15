@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/season-stat.schema.json",
+  "title": "Per-game season statistics",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "canonical_player_id", "source", "source_record_id", "league_type",
+    "league", "season_start_year", "games", "minutes", "pts", "reb", "ast", "stl",
+    "blk", "three_pm", "turnovers", "fgm", "fga", "ftm", "fta"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "canonical_player_id": { "type": "string", "pattern": "^plr_[0-9a-f]{32}$" },
+    "source": { "type": "string", "minLength": 1 },
+    "source_record_id": { "type": "string", "minLength": 1 },
+    "league_type": { "enum": ["NBA", "COLLEGE", "INTERNATIONAL"] },
+    "league": { "type": "string", "minLength": 1 },
+    "season_start_year": { "type": "integer", "minimum": 1946, "maximum": 2100 },
+    "games": { "type": "integer", "minimum": 0 },
+    "minutes": { "$ref": "#/$defs/nonNegativeNumber" },
+    "pts": { "$ref": "#/$defs/nonNegativeNumber" },
+    "reb": { "$ref": "#/$defs/nonNegativeNumber" },
+    "ast": { "$ref": "#/$defs/nonNegativeNumber" },
+    "stl": { "$ref": "#/$defs/nonNegativeNumber" },
+    "blk": { "$ref": "#/$defs/nonNegativeNumber" },
+    "three_pm": { "$ref": "#/$defs/nonNegativeNumber" },
+    "turnovers": { "$ref": "#/$defs/nonNegativeNumber" },
+    "fgm": { "$ref": "#/$defs/nonNegativeNumber" },
+    "fga": { "$ref": "#/$defs/nonNegativeNumber" },
+    "ftm": { "$ref": "#/$defs/nonNegativeNumber" },
+    "fta": { "$ref": "#/$defs/nonNegativeNumber" }
+  },
+  "$defs": {
+    "nonNegativeNumber": { "type": "number", "minimum": 0 }
+  }
+}

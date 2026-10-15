@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "snapshot_id": "snp_abcdef0123456789abcdef0123456789",
+  "source_id": "example_source",
+  "source_url": "https://example.com/data.csv",
+  "retrieved_at": "2026-10-15T12:00:00Z",
+  "local_path": "data/raw/example_source/2026-10-15/data.csv",
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "byte_count": 1234,
+  "media_type": "text/csv",
+  "license": null,
+  "notes": "Fixture only; not a selected production source."
+}

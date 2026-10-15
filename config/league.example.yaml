@@ -1,0 +1,29 @@
+schema_version: 1.0.0
+teams: 12
+scoring: head_to_head_each_category
+categories:
+  - PTS
+  - REB
+  - AST
+  - STL
+  - BLK
+  - 3PM
+  - FG%
+  - FT%
+  - TO
+draft:
+  type: snake
+roster:
+  active_size: 13
+  ir: 1
+  slots:
+    PG: 1
+    SG: 1
+    SF: 1
+    PF: 1
+    C: 1
+    G: 1
+    F: 1
+    UTIL: 3
+    BE: 3
+

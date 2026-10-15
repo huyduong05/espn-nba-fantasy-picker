@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/recommendation.schema.json",
+  "title": "Recommendation response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "data_version", "model_version", "latency_ms", "recommendations", "warnings"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "data_version": { "type": "string", "minLength": 1 },
+    "model_version": { "type": "string", "minLength": 1 },
+    "latency_ms": { "type": "number", "minimum": 0 },
+    "recommendations": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rank", "canonical_player_id", "display_name", "score", "strong_categories",
+          "category_win_gain", "injury_penalty_pct", "positions", "reason_codes"
+        ],
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "canonical_player_id": { "type": "string", "pattern": "^plr_[0-9a-f]{32}$" },
+          "display_name": { "type": "string", "minLength": 1 },
+          "score": { "type": "number", "minimum": 0, "maximum": 10 },
+          "strong_categories": {
+            "type": "array",
+            "items": { "enum": ["PTS", "REB", "AST", "STL", "BLK", "3PM", "FG%", "FT%", "TO"] },
+            "uniqueItems": true
+          },
+          "category_win_gain": { "type": "number", "minimum": -9, "maximum": 9 },
+          "injury_penalty_pct": { "type": "number", "minimum": 0, "maximum": 15 },
+          "positions": { "type": "array", "items": { "enum": ["PG", "SG", "SF", "PF", "C"] }, "minItems": 1, "uniqueItems": true },
+          "reason_codes": { "type": "array", "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }, "uniqueItems": true }
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

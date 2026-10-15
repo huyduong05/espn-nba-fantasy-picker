@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "league_config_version": "1.0.0",
+  "round": 3,
+  "overall_pick": 25,
+  "draft_slot": 1,
+  "direction": "FORWARD",
+  "user_roster": [
+    {
+      "canonical_player_id": "plr_0123456789abcdef0123456789abcdef",
+      "display_name": "Example Player Jr.",
+      "positions": ["PG", "SG"],
+      "match_status": "EXACT_ID"
+    }
+  ],
+  "remaining_players": [
+    {
+      "canonical_player_id": null,
+      "display_name": "Unresolved Example",
+      "positions": [],
+      "match_status": "UNRESOLVED"
+    }
+  ],
+  "manual_overrides": {
+    "added_player_names": [],
+    "removed_player_names": []
+  }
+}

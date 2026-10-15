@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/league-config.schema.json",
+  "title": "League configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "teams", "scoring", "categories", "draft", "roster"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "teams": { "const": 12 },
+    "scoring": { "const": "head_to_head_each_category" },
+    "categories": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "PTS" }, { "const": "REB" }, { "const": "AST" },
+        { "const": "STL" }, { "const": "BLK" }, { "const": "3PM" },
+        { "const": "FG%" }, { "const": "FT%" }, { "const": "TO" }
+      ],
+      "minItems": 9,
+      "maxItems": 9
+    },
+    "draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "snake" } }
+    },
+    "roster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_size", "ir", "slots"],
+      "properties": {
+        "active_size": { "const": 13 },
+        "ir": { "const": 1 },
+        "slots": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL", "BE"],
+          "properties": {
+            "PG": { "const": 1 }, "SG": { "const": 1 }, "SF": { "const": 1 },
+            "PF": { "const": 1 }, "C": { "const": 1 }, "G": { "const": 1 },
+            "F": { "const": 1 }, "UTIL": { "const": 3 }, "BE": { "const": 3 }
+          }
+        }
+      }
+    }
+  }
+}

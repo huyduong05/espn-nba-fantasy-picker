@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0.0",
+  "canonical_player_id": "plr_0123456789abcdef0123456789abcdef",
+  "as_of_date": "2026-10-15",
+  "source": "example_source",
+  "positions": ["PG", "SG"]
+}

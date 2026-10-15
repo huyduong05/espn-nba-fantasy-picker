@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/draft-state.schema.json",
+  "title": "Draft state request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "league_config_version", "round", "overall_pick", "draft_slot",
+    "direction", "user_roster", "remaining_players", "manual_overrides"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "league_config_version": { "const": "1.0.0" },
+    "round": { "type": "integer", "minimum": 1, "maximum": 13 },
+    "overall_pick": { "type": "integer", "minimum": 1, "maximum": 156 },
+    "draft_slot": { "type": "integer", "minimum": 1, "maximum": 12 },
+    "direction": { "enum": ["FORWARD", "REVERSE"] },
+    "user_roster": { "type": "array", "items": { "$ref": "#/$defs/draftPlayer" }, "maxItems": 13 },
+    "remaining_players": { "type": "array", "items": { "$ref": "#/$defs/draftPlayer" } },
+    "manual_overrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["added_player_names", "removed_player_names"],
+      "properties": {
+        "added_player_names": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "removed_player_names": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      }
+    }
+  },
+  "$defs": {
+    "draftPlayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_player_id", "display_name", "positions", "match_status"],
+      "properties": {
+        "canonical_player_id": { "type": ["string", "null"], "pattern": "^plr_[0-9a-f]{32}$" },
+        "display_name": { "type": "string", "minLength": 1 },
+        "positions": { "type": "array", "items": { "enum": ["PG", "SG", "SF", "PF", "C"] }, "uniqueItems": true },
+        "match_status": { "enum": ["EXACT_ID", "EXACT_ALIAS", "MANUAL", "AMBIGUOUS", "UNRESOLVED"] }
+      }
+    }
+  }
+}

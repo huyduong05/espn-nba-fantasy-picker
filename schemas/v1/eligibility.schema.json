@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantasy-picker.local/schemas/v1/eligibility.schema.json",
+  "title": "Position eligibility",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "canonical_player_id", "as_of_date", "source", "positions"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "canonical_player_id": { "type": "string", "pattern": "^plr_[0-9a-f]{32}$" },
+    "as_of_date": { "type": "string", "format": "date" },
+    "source": { "type": "string", "minLength": 1 },
+    "positions": {
+      "type": "array",
+      "items": { "enum": ["PG", "SG", "SF", "PF", "C"] },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}

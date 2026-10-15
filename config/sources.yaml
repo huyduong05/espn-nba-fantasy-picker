@@ -1,0 +1,6 @@
+schema_version: 1.0.0
+
+# Phase 1 will research and populate this list. Leaving it empty is intentional:
+# Phase 0 must not silently choose production data sources.
+sources: []
+

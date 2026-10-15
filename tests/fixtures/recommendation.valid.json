@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-10-15T12:00:00Z",
+  "data_version": "fixture-data-v1",
+  "model_version": "fixture-model-v1",
+  "latency_ms": 42.5,
+  "recommendations": [
+    {
+      "rank": 1,
+      "canonical_player_id": "plr_0123456789abcdef0123456789abcdef",
+      "display_name": "Example Player Jr.",
+      "score": 8.42,
+      "strong_categories": ["AST", "STL", "FT%"],
+      "category_win_gain": 0.37,
+      "injury_penalty_pct": 3.0,
+      "positions": ["PG", "SG"],
+      "reason_codes": ["ROSTER_FIT", "ASSIST_STRENGTH"]
+    }
+  ],
+  "warnings": []
+}

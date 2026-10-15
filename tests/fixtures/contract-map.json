@@ -1,0 +1,9 @@
+{
+  "draft-state.valid.json": "draft-state",
+  "eligibility.valid.json": "eligibility",
+  "injury.valid.json": "injury",
+  "player.valid.json": "player",
+  "provenance.valid.json": "provenance",
+  "recommendation.valid.json": "recommendation",
+  "season-stat.valid.json": "season-stat"
+}

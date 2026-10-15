@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "canonical_player_id": "plr_0123456789abcdef0123456789abcdef",
+  "display_name": "Example Player Jr.",
+  "birth_date": "2000-01-02",
+  "aliases": ["Example Player"],
+  "source_ids": { "example_source": "player-42" }
+}
