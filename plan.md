@@ -237,6 +237,10 @@ Completion gate:
 
 ### Phase 4 — Rookie and low-sample projections
 
+Status: **Complete (2026-10-15).** The active-player artifact applies the
+configured NCAA translation and NBA/non-NBA blend to 83 conservatively linked
+players; two unsupported international cases are surfaced as low-information.
+
 Tasks:
 
 - Normalize available college and international per-game data.

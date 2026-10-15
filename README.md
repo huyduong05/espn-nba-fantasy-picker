@@ -126,6 +126,24 @@ The Phase 3 scope intentionally does not use current injuries, college or
 international translations, or guessed ages. Those inputs are handled in later
 phases; past NBA production profiles act as the initial role features.
 
+## Phase 4 rookie and low-sample projections
+
+Run the Phase 4 adjustment after Phase 3 training:
+
+```bash
+.venv/bin/fantasy-picker model phase4
+```
+
+This emits active-player projections under `artifacts/phase4/`. Reviewed NCAA
+records use the configurable 0.5 per-stat translation multiplier; NBA evidence
+receives 75% weight in a second season and 90% once established. Players without
+NBA history receive a monotonic uncertainty penalty based on their available
+non-NBA seasons. Unsupported international histories are not guessed: they are
+flagged low-information with a 35% recommendation multiplier penalty. The
+universal 0.5 translation factor is an intentionally uncalibrated initial
+assumption and should be revisited when a licensed, comparable international
+dataset is available.
+
 ## Contract ownership
 
 The JSON files in `schemas/v1/` are the source of truth for records exchanged by

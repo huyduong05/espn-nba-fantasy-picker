@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 from fantasy_picker.contracts import SCHEMA_NAMES, load_schema, load_yaml, repository_root, validate
 from fantasy_picker.data.coverage import write_coverage_report
@@ -30,6 +32,11 @@ from fantasy_picker.models.projections import (
     save_artifacts,
     train_bundle,
     write_projection_table,
+)
+from fantasy_picker.models.rookies import (
+    build_phase4_projections,
+    load_phase4_config,
+    save_phase4_artifacts,
 )
 
 
@@ -121,6 +128,16 @@ def build_parser() -> argparse.ArgumentParser:
     project_parser.add_argument("--stats", default="data/processed/season_stats.jsonl")
     project_parser.add_argument("--bundle", default="artifacts/phase3/projection_bundle.pkl")
     project_parser.add_argument("--output", default="artifacts/phase3/projections.jsonl")
+    phase4_parser = model_subparsers.add_parser(
+        "phase4", help="write rookie and low-sample adjusted active-player projections"
+    )
+    phase4_parser.add_argument("--stats", default="data/processed/season_stats.jsonl")
+    phase4_parser.add_argument("--players", default="data/processed/players.jsonl")
+    phase4_parser.add_argument("--eligibility", default="data/processed/eligibility.jsonl")
+    phase4_parser.add_argument("--unresolved", default="data/processed/unresolved_matches.json")
+    phase4_parser.add_argument("--bundle", default="artifacts/phase3/projection_bundle.pkl")
+    phase4_parser.add_argument("--config", default="config/rookie-projection.yaml")
+    phase4_parser.add_argument("--output-dir", default="artifacts/phase4")
     return parser
 
 
@@ -165,10 +182,47 @@ def _run_model_command(arguments: argparse.Namespace) -> int:
             write_projection_table(output, project(records, bundle))
             print(output)
             return 0
+        if arguments.model_command == "phase4":
+            players_path = root / arguments.players
+            eligibility_path = root / arguments.eligibility
+            unresolved_path = root / arguments.unresolved
+            config_path = root / arguments.config
+            all_records = _load_jsonl(stats_path)
+            players = _load_jsonl(players_path)
+            eligibility = _load_jsonl(eligibility_path)
+            unresolved = json.loads(unresolved_path.read_text())
+            if not isinstance(unresolved, dict):
+                raise ProjectionError("Unresolved-match report must be a JSON object")
+            config = load_phase4_config(config_path)
+            rows = build_phase4_projections(
+                all_records,
+                players,
+                eligibility,
+                unresolved,
+                load_bundle(root / arguments.bundle),
+                config,
+            )
+            paths = save_phase4_artifacts(
+                root / arguments.output_dir,
+                rows,
+                [stats_path, players_path, eligibility_path, unresolved_path, config_path],
+                config,
+            )
+            print(json.dumps({key: value.as_posix() for key, value in paths.items()}, indent=2))
+            return 0
     except (ProjectionError, OSError, ValueError) as error:
         print(f"Projection modeling failed: {error}")
         return 2
     raise AssertionError(f"Unhandled model command: {arguments.model_command}")
+
+
+def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        raise ProjectionError(f"Missing processed dataset: {path}")
+    records = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    if not all(isinstance(record, dict) for record in records):
+        raise ProjectionError(f"Expected JSON object records in {path}")
+    return records
 
 
 def _add_refresh_option(parser: argparse.ArgumentParser) -> None:

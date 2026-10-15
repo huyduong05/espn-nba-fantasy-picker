@@ -1,0 +1,13 @@
+schema_version: 1.0.0
+translation_multiplier: 0.5
+non_nba_seasons: 2
+nba_weights:
+  second_year: 0.75
+  established: 0.90
+uncertainty_penalties:
+  rookie_base: 0.30
+  rookie_per_non_nba_season: 0.05
+  second_year_base: 0.12
+  second_year_per_non_nba_season: 0.02
+  established: 0.00
+  unsupported_international: 0.35
