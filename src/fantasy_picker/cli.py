@@ -55,6 +55,14 @@ from fantasy_picker.ranking.evaluator import (
     write_candidate_evaluations,
     write_reference_distribution,
 )
+from fantasy_picker.ranking.recommender import (
+    RecommendationError,
+    load_injury_assessments,
+    load_recommender_config,
+    recommend_with_details,
+    write_recommendation_details,
+    write_recommendations,
+)
 
 
 def validate_contracts() -> int:
@@ -174,7 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output", default="artifacts/phase5/injury_assessments.jsonl"
     )
     ranking_parser = subparsers.add_parser(
-        "ranking", help="build and use the Phase 6 nine-category roster evaluator"
+        "ranking", help="build references, evaluate rosters, and rank draft recommendations"
     )
     ranking_subparsers = ranking_parser.add_subparsers(dest="ranking_command", required=True)
     reference_parser = ranking_subparsers.add_parser(
@@ -199,6 +207,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     evaluate_parser.add_argument("--draft-state", required=True)
     evaluate_parser.add_argument("--output", default="artifacts/phase6/candidate_evaluations.json")
+    recommend_parser = ranking_subparsers.add_parser(
+        "recommend", help="rank five Phase 7 draft-aware recommendations"
+    )
+    recommend_parser.add_argument(
+        "--projections", default="artifacts/phase4/rookie_adjusted_projections.jsonl"
+    )
+    recommend_parser.add_argument(
+        "--reference", default="artifacts/phase6/reference_distribution.json"
+    )
+    recommend_parser.add_argument(
+        "--injury-assessments", default="artifacts/phase5/injury_assessments.jsonl"
+    )
+    recommend_parser.add_argument("--draft-state", required=True)
+    recommend_parser.add_argument("--config", default="config/recommendation-engine.yaml")
+    recommend_parser.add_argument("--output", default="artifacts/phase7/recommendations.json")
+    recommend_parser.add_argument(
+        "--details-output", default="artifacts/phase7/recommendation_details.json"
+    )
     return parser
 
 
@@ -343,7 +369,36 @@ def _run_ranking_command(arguments: argparse.Namespace) -> int:
             write_candidate_evaluations(output, rows)
             print(json.dumps({"evaluations": output.as_posix(), "count": len(rows)}, indent=2))
             return 0
-    except (EvaluatorError, ProjectionError, OSError, ValueError) as error:
+        if arguments.ranking_command == "recommend":
+            state_path = root / arguments.draft_state
+            if not state_path.is_file():
+                raise RecommendationError(f"Missing draft state: {state_path}")
+            state = json.loads(state_path.read_text())
+            if not isinstance(state, dict):
+                raise RecommendationError("Draft state must be a JSON object")
+            response, details = recommend_with_details(
+                state,
+                projections,
+                load_reference_distribution(root / arguments.reference),
+                load_injury_assessments(root / arguments.injury_assessments),
+                load_recommender_config(root / arguments.config),
+            )
+            output = root / arguments.output
+            details_output = root / arguments.details_output
+            write_recommendations(output, response)
+            write_recommendation_details(details_output, details)
+            print(
+                json.dumps(
+                    {
+                        "recommendations": output.as_posix(),
+                        "details": details_output.as_posix(),
+                        "count": len(response["recommendations"]),
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+    except (EvaluatorError, RecommendationError, ProjectionError, OSError, ValueError) as error:
         print(f"Roster evaluation failed: {error}")
         return 2
     raise AssertionError(f"Unhandled ranking command: {arguments.ranking_command}")

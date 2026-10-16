@@ -309,6 +309,13 @@ Completion gate:
 
 ### Phase 7 — Draft-aware greedy recommendation engine
 
+Status: **Complete (2026-10-16).** The deterministic local ranker composes
+Phase 6 category-win results with configured current-roster (60%), next-pick
+urgency (25%), scarcity/replacement (10%), and certainty (5%) evidence, then
+applies the Phase 5 injury penalty. It emits the unchanged public top-five
+contract plus a separate inspectable scoring artifact; absent Phase 5 coverage
+is warned and excluded while explicit `NO_INJURY_DATA` remains eligible.
+
 Tasks:
 
 - Implement candidate evaluation for the current pick.

@@ -78,6 +78,27 @@ percentages, and lower-is-better turnovers. Its output contains per-category
 before/after values, expected category-win changes, lineup assignments, and
 reason codes for Phase 7; it does not apply injury penalties.
 
+## Phase 7 draft-aware recommendations
+
+With the Phase 4 projections, Phase 5 injury assessments, and Phase 6 reference
+artifact prepared, rank the available draft choices locally:
+
+```bash
+.venv/bin/fantasy-picker ranking recommend --draft-state path/to/draft-state.json
+```
+
+The public response is written to `artifacts/phase7/recommendations.json` and
+remains valid against the existing `recommendation` contract. A companion
+`artifacts/phase7/recommendation_details.json` keeps each candidate's raw
+category-win gain, survival estimate, replacement and scarcity values,
+uncertainty, injury penalty, and nine category deltas for inspection. The engine
+weights current roster gain (60%), next-pick urgency (25%),
+scarcity/replacement (10%), and certainty (5%), then applies the Phase 5 injury
+penalty. It uses only deterministic local projection ranks—never ADP or a
+draft-time network request. Candidates lacking any Phase 5 assessment are
+excluded with a warning; an explicit `NO_INJURY_DATA` assessment remains
+eligible.
+
 ## Phase 1 data acquisition
 
 Review the source decisions and unresolved gaps in

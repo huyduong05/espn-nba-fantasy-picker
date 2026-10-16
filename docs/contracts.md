@@ -95,3 +95,9 @@ cross-component public contract. They retain the projection/eligibility input
 fingerprint, deterministic simulation configuration, reference category means
 and standard deviations, and per-candidate category deltas for Phase 7.
 
+Phase 7 writes the schema-valid recommendation response separately from its
+local inspection artifact. The latter retains raw category-win gains, category
+deltas, local rank and survival estimate, replacement and scarcity evidence,
+uncertainty, and the pre- and post-injury score components without extending the
+stable public recommendation schema.
+
