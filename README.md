@@ -39,6 +39,25 @@ Validate the shared contracts and example league configuration directly:
 Phase 0 does not download production data, select a data provider, train a model,
 or communicate with ESPN. Those choices remain gated by later phases.
 
+## Phase 8 local inference API
+
+After preparing the Phase 4 projections, Phase 5 injury assessments, and Phase 6
+reference distribution, start the local-only service:
+
+```bash
+export FANTASY_PICKER_EXTENSION_ORIGIN='chrome-extension://<your-32-letter-extension-id>'
+.venv/bin/fantasy-picker serve
+```
+
+The service binds only to `http://127.0.0.1:8765` and makes no network requests.
+It serves `GET /api/v1/health`, `GET /api/v1/metadata`, and
+`POST /api/v1/recommendations`; the recommendation request and response are the
+existing `draft-state` and `recommendation` v1 contracts. The extension origin is
+required so CORS is limited to that specific extension. Missing or invalid local
+artifacts leave health and metadata unavailable; rerun the applicable earlier
+phase, then restart the service. Logs contain endpoint status and timing only,
+never draft payloads or player names.
+
 ## Phase 5 injury and availability assessments
 
 Once identity-resolved injury events are available locally, generate a dated

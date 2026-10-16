@@ -225,6 +225,15 @@ def build_parser() -> argparse.ArgumentParser:
     recommend_parser.add_argument(
         "--details-output", default="artifacts/phase7/recommendation_details.json"
     )
+    serve_parser = subparsers.add_parser("serve", help="start the localhost inference API")
+    serve_parser.add_argument(
+        "--projections", default="artifacts/phase4/rookie_adjusted_projections.jsonl"
+    )
+    serve_parser.add_argument("--reference", default="artifacts/phase6/reference_distribution.json")
+    serve_parser.add_argument(
+        "--injury-assessments", default="artifacts/phase5/injury_assessments.jsonl"
+    )
+    serve_parser.add_argument("--config", default="config/recommendation-engine.yaml")
     return parser
 
 
@@ -240,6 +249,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_injury_command(arguments)
     if arguments.command == "ranking":
         return _run_ranking_command(arguments)
+    if arguments.command == "serve":
+        return _run_server(arguments)
     raise AssertionError(f"Unhandled command: {arguments.command}")
 
 
@@ -402,6 +413,27 @@ def _run_ranking_command(arguments: argparse.Namespace) -> int:
         print(f"Roster evaluation failed: {error}")
         return 2
     raise AssertionError(f"Unhandled ranking command: {arguments.ranking_command}")
+
+
+def _run_server(arguments: argparse.Namespace) -> int:
+    from fantasy_picker.api import ApiConfigurationError, ArtifactPaths, create_app
+
+    root = repository_root()
+    try:
+        app = create_app(
+            ArtifactPaths(
+                projections=root / arguments.projections,
+                reference=root / arguments.reference,
+                injury_assessments=root / arguments.injury_assessments,
+                recommender_config=root / arguments.config,
+            )
+        )
+    except ApiConfigurationError as error:
+        print(f"Server configuration failed: {error}")
+        return 2
+    print("Fantasy Picker API listening on http://127.0.0.1:8765/api/v1/health")
+    app.run(host="127.0.0.1", port=8765, debug=False, use_reloader=False)
+    return 0
 
 
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:

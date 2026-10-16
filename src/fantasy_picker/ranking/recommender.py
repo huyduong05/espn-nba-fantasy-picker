@@ -298,6 +298,7 @@ def _attach_raw_components(
         )
         positions = cast(list[str], candidate["evaluation"]["positions"])
         candidate["usable_starter_slots"] = _eligible_slots(positions, unfilled_starter_slots)
+    for candidate in candidates:
         candidate["scarcity_raw"] = _scarcity(candidate, candidates, unfilled_starter_slots)
 
 
