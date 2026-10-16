@@ -3,5 +3,20 @@
   "name": "ESPN NBA Fantasy Draft Assistant",
   "version": "0.1.0",
   "description": "Local-first nine-category draft recommendations.",
-  "permissions": []
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://fantasy.espn.com/basketball/*",
+    "http://127.0.0.1:8765/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://fantasy.espn.com/basketball/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }

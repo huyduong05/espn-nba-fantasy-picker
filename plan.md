@@ -60,8 +60,9 @@ The system will:
 - All required data and model artifacts must be available locally before the draft begins.
 - The extension requests recommendations only when the user clicks a button.
 - The user remains responsible for making the actual ESPN draft selection.
-- ESPN data will be read from rendered draft-page content, not private or undocumented authenticated APIs.
-- The user may manually correct the remaining-player list if scraping is incomplete.
+- The extension is shown on ESPN Fantasy Basketball pages but does not read ESPN page content or
+  use authenticated ESPN APIs.
+- The user manually maintains their roster and taken-player lists through the extension panel.
 
 ## 3. Proposed Architecture
 
@@ -84,7 +85,7 @@ Versioned local datasets
                        v
                 Local inference bundle
 
-ESPN draft page --> Chrome content script --> Extension UI
+ESPN draft page --> Manual extension panel --> Derived draft state
                                                 |
                                                 v
                                       Flask localhost API
@@ -92,7 +93,7 @@ ESPN draft page --> Chrome content script --> Extension UI
                           +---------------------+--------------------+
                           |                     |                    |
                           v                     v                    v
-                    Player matching       Roster evaluator    Draft-aware ranker
+                   Bundled player index    Roster evaluator    Draft-aware ranker
                           |                     |                    |
                           +---------------------+--------------------+
                                                 |
@@ -100,7 +101,9 @@ ESPN draft page --> Chrome content script --> Extension UI
                                     Top-five recommendations
 ```
 
-The training pipeline and draft-time inference path will be separate. Data downloads, feature generation, and model fitting happen before the draft. During the draft, the service only loads cached artifacts, matches ESPN players, evaluates the current state, and ranks candidates.
+The training pipeline and draft-time inference path are separate. Data downloads, feature generation,
+model fitting, and player-index generation happen before the draft. During the draft, the service
+only loads cached artifacts, validates the manual board, evaluates the current state, and ranks candidates.
 
 ## 4. Repository Layout Target
 
@@ -335,6 +338,10 @@ Completion gate:
 
 ### Phase 8 — Local Flask inference service
 
+Status: **Implementation complete (2026-10-16).** The local API and test suite
+are complete. Live readiness additionally requires prepared Phase 4/5/6 artifacts
+and `FANTASY_PICKER_EXTENSION_ORIGIN` set to the loaded extension's ID.
+
 Tasks:
 
 - Define a versioned localhost JSON API.
@@ -365,23 +372,28 @@ Completion gate:
 - Invalid and ambiguous players are reported clearly.
 - Warm recommendation latency stays safely below the end-to-end budget.
 
-### Phase 9 — Chrome extension and ESPN draft parsing
+### Phase 9 — Manual draft-board Chrome extension
+
+Status: **Implementation complete (2026-10-17).** The extension bundles a
+session-scoped manual board, generated local player index, explicit-click local
+API client, and no ESPN page parser. Loading it into Chrome and configuring its
+generated extension ID remain pre-draft setup steps.
 
 Tasks:
 
-- Create a Manifest V3 TypeScript extension restricted to the required ESPN fantasy basketball pages and localhost API.
-- Add a content script that reads rendered draft-page content.
-- Extract draft progress, drafted/remaining players, current roster, pick number, and round when present.
-- Keep selectors and parsing logic isolated and fixture-tested.
-- Add a visible `Suggest picks` action and recommendation panel.
-- Display scores, strong categories, category-win gain, injury adjustment, errors, and data freshness.
-- Add a manual correction interface for remaining players and unresolved player names.
+- Create a Manifest V3 TypeScript extension restricted to ESPN Fantasy Basketball pages and the localhost API.
+- Add a closable in-page panel that does not read or parse ESPN page content.
+- Generate a versioned local player index from active Phase 4 projections, canonical names and aliases, and historical eligibility.
+- Require explicit search-result selection for separate user-roster and taken-player lists; prevent duplicates and unavailable players.
+- Derive remaining players, round, pick, and snake direction from the manual board and configured draft slot.
+- Persist the manual board in session-only extension storage and validate that suggestions are requested only at the user's turn.
+- Add a visible `Suggest picks` action and display scores, strong categories, category-win gain, injury adjustment, errors, and data freshness.
 - Never click the ESPN draft button or submit a pick.
 
 Completion gate:
 
-- The parser works against saved HTML fixtures from the actual ESPN draft UI.
-- Manual corrections override uncertain scrape results.
+- The manual board produces a valid draft-state request for early, middle, and late snake-draft turns.
+- Session restoration preserves the board after refresh without retaining it across browser sessions.
 - The extension requests recommendations only after an explicit click.
 - Extension permissions are minimal and documented.
 
@@ -389,9 +401,8 @@ Completion gate:
 
 Tasks:
 
-- Connect extension payloads to the Flask API contract.
-- Create representative draft snapshots for early, middle, and late rounds.
-- Profile page parsing, JSON transfer, player matching, candidate scoring, and rendering separately.
+- Validate extension payloads against the Flask API contract with representative manual boards for early, middle, and late rounds.
+- Profile index search, board-state derivation, JSON transfer, candidate scoring, and rendering separately.
 - Precompute all invariant values and keep models resident in memory.
 - Add timeouts and useful recovery paths if the service is unavailable or data is stale.
 - Verify that no external network request is required after startup.
@@ -399,9 +410,8 @@ Tasks:
 Latency budget target:
 
 ```text
-ESPN page parsing                 <= 1.0 s
+Manual board validation           <= 0.1 s
 Extension-to-localhost request    <= 0.2 s
-Player matching and validation    <= 0.8 s
 Candidate scoring                 <= 4.0 s
 Response rendering                <= 0.5 s
 Contingency                       <= 3.5 s
@@ -412,15 +422,15 @@ Completion gate:
 
 - End-to-end p95 latency is below 10 seconds on the target Mac.
 - Offline draft simulation succeeds.
-- Parser or matching uncertainty is shown instead of producing silent incorrect recommendations.
+- Invalid manual-board state is shown instead of producing silent incorrect recommendations.
 
 ### Phase 11 — Draft rehearsal and release checklist
 
 Tasks:
 
-- Run a complete mock draft or replay from saved draft snapshots.
+- Run a complete mock draft using the manual board.
 - Test server startup, model loading, extension installation, permissions, and connectivity.
-- Test manual remaining-player corrections and recovery after refreshing the ESPN page.
+- Test manual-board session restoration, incomplete-board recovery, and extension-origin CORS setup.
 - Record dataset and model refresh timestamps.
 - Write a pre-draft checklist and troubleshooting guide.
 - Package a reproducible local release.
@@ -428,7 +438,7 @@ Tasks:
 Completion gate:
 
 - A user can follow the README from a clean environment to prepare data, train or obtain artifacts, start the server, load the extension, and get recommendations.
-- The entire draft workflow works without internet access except for the already-loaded ESPN draft page itself.
+- The entire draft workflow works locally once the extension page is already open.
 - Known limitations and fallback procedures are documented.
 
 ## 6. Testing Strategy
@@ -458,9 +468,8 @@ Completion gate:
 
 ### Extension tests
 
-- Parser fixtures for relevant ESPN draft layouts and page states.
-- Loading, empty, stale, ambiguous, server-offline, and success states.
-- Manual override persistence and precedence.
+- Generated player-index coverage, manual-board state derivation, session persistence, and explicit-click requests.
+- Loading, empty, stale, invalid-board, server-offline, and success states.
 - No automated draft submission.
 
 ### Performance tests
@@ -476,25 +485,17 @@ Completion gate:
 - Each processed dataset will reference source snapshots, transformation version, creation timestamp, and schema version.
 - Model artifacts will store training seasons, feature list, code version, evaluation results, and dataset fingerprints.
 - The repository will cite sources without implying that public accessibility permits unrestricted redistribution.
-- Secrets or authenticated ESPN session data will not be written to datasets or logs.
+- Secrets, authenticated ESPN session data, invite tokens, and scraped ESPN page content will not be written to datasets or logs.
 
-## 8. Important Open Decisions
+## 8. Decisions Recorded
 
-These decisions must be resolved in the relevant phase rather than assumed now:
-
-1. Which public data sources provide acceptable coverage, licensing, stability, and identifiers for each data domain.
-2. Whether the initial 0.5 non-NBA multiplier applies to every individual stat, to a combined projection, or to the non-NBA model's contribution.
-3. How international competitions with different game lengths and competition levels are represented beyond the initial multiplier.
-4. The exact formula and calibration dataset for expected category-win probability.
-5. The source used to estimate whether a player survives until the next snake-draft pick.
-6. Whether position eligibility comes from ESPN page content, a historical source, a manually maintained table, or a defined precedence among them.
-7. How to represent a player whose current injury status or return timetable is unavailable offline.
-8. The exact Flask port and extension presentation style.
-9. Whether model artifacts are always trained locally or whether a versioned prebuilt artifact is also supported.
-10. Which ESPN draft-page states and layouts must be supported after real page samples are available.
+- Historical eligibility records are the position authority for the manual board.
+- Flask binds to `127.0.0.1:8765`; prepared local artifacts are required and no prebuilt fallback or startup training is supported.
+- The extension is a closable in-page manual panel backed by a bundled player index.
+- ESPN page parsing is out of scope for the manual workflow.
 
 ## 9. Recommended Execution Order
 
-Execute phases in numeric order. Phases 3–5 can be iterated independently after Phase 2 establishes stable datasets and identities. Extension scaffolding may begin before the final model is selected if it uses the agreed API schema and saved fixtures, but end-to-end scoring should wait until Phases 6–8 are complete.
+Execute phases in numeric order. Phases 3–5 can be iterated independently after Phase 2 establishes stable datasets and identities. Phase 9 depends on the Phase 8 API contract and prepared player-index inputs; Phase 10 validates the complete manual-board workflow.
 
 The user will explicitly authorize each phase before implementation begins.

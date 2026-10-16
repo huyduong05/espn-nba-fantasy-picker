@@ -58,6 +58,23 @@ artifacts leave health and metadata unavailable; rerun the applicable earlier
 phase, then restart the service. Logs contain endpoint status and timing only,
 never draft payloads or player names.
 
+## Phase 9 manual draft-board extension
+
+Prepare the player index and build the load-unpacked Chrome extension before the draft:
+
+```bash
+.venv/bin/fantasy-picker extension build-player-index
+npm --prefix extension run build
+```
+
+Load `extension/dist/` through Chrome's **Load unpacked** developer-mode flow, then copy the
+displayed extension ID into `FANTASY_PICKER_EXTENSION_ORIGIN` before starting the local API.
+On any ESPN Fantasy Basketball page, the extension adds a closed **Fantasy Picker** panel. Select
+your draft slot once, then search and explicitly add players to **My roster** or **Taken players**.
+The remaining pool, snake direction, round, and pick are derived from that board. The panel stores
+the board only in the current browser session, reads no ESPN page data, and requests suggestions
+only when you select **Suggest picks**.
+
 ## Phase 5 injury and availability assessments
 
 Once identity-resolved injury events are available locally, generate a dated

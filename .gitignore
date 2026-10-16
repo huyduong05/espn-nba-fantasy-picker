@@ -18,6 +18,7 @@ data/processed/*
 data/coverage-report.json
 
 extension/dist/
+extension/generated/
 extension/node_modules/
 extension/coverage/
 

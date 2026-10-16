@@ -22,6 +22,15 @@ from fantasy_picker.data.sources import (
     acquire_nba_reference_data,
     acquire_ncaa_player_boxes,
 )
+from fantasy_picker.extension_index import (
+    PlayerIndexError,
+    build_player_index,
+    current_timestamp,
+    write_player_index,
+)
+from fantasy_picker.extension_index import (
+    load_jsonl as load_index_jsonl,
+)
 from fantasy_picker.models.injuries import (
     InjuryScoringError,
     load_injury_config,
@@ -234,6 +243,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--injury-assessments", default="artifacts/phase5/injury_assessments.jsonl"
     )
     serve_parser.add_argument("--config", default="config/recommendation-engine.yaml")
+    extension_parser = subparsers.add_parser(
+        "extension", help="prepare assets for the manual draft-board extension"
+    )
+    extension_subparsers = extension_parser.add_subparsers(dest="extension_command", required=True)
+    index_parser = extension_subparsers.add_parser(
+        "build-player-index", help="write the active player index consumed by the extension"
+    )
+    index_parser.add_argument("--players", default="data/processed/players.jsonl")
+    index_parser.add_argument("--eligibility", default="data/processed/eligibility.jsonl")
+    index_parser.add_argument(
+        "--projections", default="artifacts/phase4/rookie_adjusted_projections.jsonl"
+    )
+    index_parser.add_argument("--output", default="extension/generated/player-index.json")
     return parser
 
 
@@ -251,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_ranking_command(arguments)
     if arguments.command == "serve":
         return _run_server(arguments)
+    if arguments.command == "extension":
+        return _run_extension_command(arguments)
     raise AssertionError(f"Unhandled command: {arguments.command}")
 
 
@@ -434,6 +458,27 @@ def _run_server(arguments: argparse.Namespace) -> int:
     print("Fantasy Picker API listening on http://127.0.0.1:8765/api/v1/health")
     app.run(host="127.0.0.1", port=8765, debug=False, use_reloader=False)
     return 0
+
+
+def _run_extension_command(arguments: argparse.Namespace) -> int:
+    if arguments.extension_command != "build-player-index":
+        raise AssertionError(f"Unhandled extension command: {arguments.extension_command}")
+    root = repository_root()
+    try:
+        projections = load_projections(root / arguments.projections)
+        index = build_player_index(
+            load_index_jsonl(root / arguments.players),
+            load_index_jsonl(root / arguments.eligibility),
+            [str(row["canonical_player_id"]) for row in projections],
+            generated_at=current_timestamp(),
+        )
+        output = root / arguments.output
+        write_player_index(output, index)
+        print(json.dumps({"player_index": output.as_posix(), "count": len(index["players"])}))
+        return 0
+    except (EvaluatorError, PlayerIndexError, OSError, ValueError) as error:
+        print(f"Extension asset build failed: {error}")
+        return 2
 
 
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:

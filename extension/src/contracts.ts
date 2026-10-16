@@ -48,3 +48,33 @@ export interface RecommendationResponse {
   recommendations: Recommendation[];
   warnings: string[];
 }
+
+export interface PlayerIndexPlayer {
+  canonical_player_id: string;
+  display_name: string;
+  aliases: string[];
+  positions: Position[];
+}
+
+export interface PlayerIndex {
+  schema_version: typeof SCHEMA_VERSION;
+  index_version: "phase_9_player_index_v1";
+  generated_at: string;
+  input_fingerprint: string;
+  players: PlayerIndexPlayer[];
+}
+
+export interface ManualBoardState {
+  draft_slot: number | null;
+  roster_ids: string[];
+  taken_ids: string[];
+}
+
+export interface RecommendationRequestMessage {
+  type: "recommend";
+  draft_state: DraftState;
+}
+
+export type RecommendationResponseMessage =
+  | { ok: true; response: unknown }
+  | { ok: false; code: string; message: string };

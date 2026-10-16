@@ -9,7 +9,7 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noEmit": true,
-    "types": ["node", "vitest/globals"]
+    "types": ["chrome", "node", "vitest/globals"]
   },
   "include": ["src", "tests", "eslint.config.js", "vitest.config.ts"]
 }

@@ -7,20 +7,24 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "lint": "eslint .",
     "test": "vitest run",
-    "check": "npm run format && npm run lint && npm run build && npm test"
+    "check": "npm run format && npm run lint && npm run typecheck && npm run build && npm test"
   },
   "devDependencies": {
     "@eslint/js": "latest",
+    "@types/chrome": "^0.3.5",
     "@types/node": "latest",
     "ajv": "latest",
     "ajv-formats": "latest",
+    "esbuild": "^0.28.2",
     "eslint": "latest",
     "globals": "latest",
+    "happy-dom": "^21.0.3",
     "prettier": "latest",
     "typescript": "latest",
     "typescript-eslint": "latest",

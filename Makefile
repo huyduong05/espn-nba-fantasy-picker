@@ -15,6 +15,7 @@ check-python:
 	.venv/bin/pytest
 
 check-extension:
+	.venv/bin/fantasy-picker extension build-player-index
 	npm --prefix extension run check
 
 test: test-python test-extension
