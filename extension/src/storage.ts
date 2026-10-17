@@ -12,7 +12,12 @@ export async function loadBoard(
   store: SessionStore,
 ): Promise<ManualBoardState> {
   const value: unknown = (await store.get(STORAGE_KEY))[STORAGE_KEY];
-  return isBoard(value) ? value : emptyBoard();
+  return isBoard(value)
+    ? {
+        roster_ids: [...value.roster_ids],
+        taken_ids: [...value.taken_ids],
+      }
+    : emptyBoard();
 }
 
 export async function saveBoard(
@@ -26,7 +31,6 @@ function isBoard(value: unknown): value is ManualBoardState {
   return (
     typeof value === "object" &&
     value !== null &&
-    "draft_slot" in value &&
     "roster_ids" in value &&
     "taken_ids" in value &&
     Array.isArray((value as ManualBoardState).roster_ids) &&

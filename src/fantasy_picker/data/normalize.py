@@ -6,11 +6,14 @@ import csv
 import gzip
 import json
 import re
+import zipfile
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from io import TextIOWrapper
 from pathlib import Path
 from typing import Any, cast
+from uuid import NAMESPACE_URL, uuid5
 
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
@@ -162,8 +165,13 @@ def normalize_cached_data(repository_root: Path, review_path: Path) -> dict[str,
     root = repository_root.resolve()
     nba_batch = _latest_batch(root / "data" / "raw" / "nba_stats")
     college_batch = _latest_batch(root / "data" / "raw" / "sportsdataverse_ncaa")
+    injury_batch = _latest_batch(root / "data" / "raw" / "kaggle_nba_injuries")
     if nba_batch is None or college_batch is None:
         raise NormalizationError("NBA and NCAA snapshots are required; run `data fetch-all` first")
+    if injury_batch is None:
+        raise NormalizationError(
+            "Historical injury snapshots are required; run `data fetch-injuries` first"
+        )
 
     output_root = root / "data" / "processed"
     registry = PlayerRegistry(_load_existing_players(output_root / "players.jsonl"))
@@ -193,6 +201,11 @@ def normalize_cached_data(repository_root: Path, review_path: Path) -> dict[str,
             )
         record["canonical_player_id"] = canonical_id
 
+    injury_events, unresolved_injuries, injury_manifest_paths = _normalize_historical_injuries(
+        injury_batch, registry, overrides
+    )
+    raw_manifest_paths.extend(injury_manifest_paths)
+
     players = sorted(
         registry.players.values(), key=lambda record: cast(str, record["canonical_player_id"])
     )
@@ -207,7 +220,9 @@ def normalize_cached_data(repository_root: Path, review_path: Path) -> dict[str,
     unresolved = _build_unresolved_report(
         resolution, roster, college_profiles, nba_batch, position_gaps, input_issues
     )
-    quality = _validate_processed_data(players, stats, eligibility, unresolved, overrides)
+    quality = _validate_processed_data(
+        players, stats, eligibility, injury_events, unresolved, unresolved_injuries, overrides
+    )
     manifest = {
         "schema_version": "1.0.0",
         "transformation_version": TRANSFORMATION_VERSION,
@@ -218,15 +233,194 @@ def normalize_cached_data(repository_root: Path, review_path: Path) -> dict[str,
             "season_stats": len(stats),
             "eligibility": len(eligibility),
             "unresolved": len(cast(list[dict[str, Any]], unresolved["records"])),
+            "injury_events": len(injury_events),
+            "unresolved_injuries": len(cast(list[dict[str, Any]], unresolved_injuries["records"])),
         },
     }
     _write_jsonl(output_root / "players.jsonl", players)
     _write_jsonl(output_root / "season_stats.jsonl", stats)
     _write_jsonl(output_root / "eligibility.jsonl", eligibility)
+    _write_jsonl(output_root / "injury_events.jsonl", injury_events)
     _write_json(output_root / "unresolved_matches.json", unresolved)
+    _write_json(output_root / "unresolved_injury_matches.json", unresolved_injuries)
     _write_json(output_root / "data_quality_report.json", quality)
     _write_json(output_root / "normalization_manifest.json", manifest)
     return {"manifest": manifest, "quality": quality, "output_root": output_root.as_posix()}
+
+
+def _normalize_historical_injuries(
+    batch: Path, registry: PlayerRegistry, review: dict[str, Any]
+) -> tuple[list[dict[str, Any]], dict[str, Any], list[str]]:
+    """Convert reviewed Kaggle absence transactions into historical injury events."""
+    path = batch / "injuries" / "2010-2020" / "dataset.zip"
+    if not path.is_file():
+        raise NormalizationError(
+            "No historical injury archive found; run `data fetch-injuries` before `data normalize`"
+        )
+    _verify_snapshot(path)
+    mappings = _injury_mapping_index(review)
+    nba_players = _nba_player_index(registry)
+    events: list[dict[str, Any]] = []
+    review_records: list[dict[str, Any]] = []
+    invalid_rows = 0
+    skipped_acquisitions = 0
+
+    try:
+        with zipfile.ZipFile(path) as archive:
+            if "injuries_2010-2020.csv" not in archive.namelist():
+                raise NormalizationError(
+                    "Historical injury archive is missing injuries_2010-2020.csv"
+                )
+            with archive.open("injuries_2010-2020.csv") as raw_stream:
+                reader = csv.DictReader(TextIOWrapper(raw_stream, encoding="utf-8-sig", newline=""))
+                fields = set(reader.fieldnames or [])
+                required_fields = {"Date", "Team", "Acquired", "Relinquished", "Notes"}
+                if not required_fields <= fields:
+                    raise NormalizationError(
+                        "Historical injury archive is missing required CSV fields: "
+                        f"{sorted(required_fields - fields)}"
+                    )
+                for row_number, row in enumerate(reader, start=2):
+                    acquired_name = _optional_text(row.get("Acquired"))
+                    relinquished_name = _optional_text(row.get("Relinquished"))
+                    if acquired_name is not None:
+                        skipped_acquisitions += 1
+                        review_records.append(
+                            {
+                                "source": "kaggle_nba_injuries",
+                                "row_number": row_number,
+                                "source_player_name": acquired_name,
+                                "status": "ACQUISITION_SIDE_SKIPPED",
+                                "reason": (
+                                    "Acquired entries are activation/return transactions and "
+                                    "do not create a historical absence event."
+                                ),
+                            }
+                        )
+                    if relinquished_name is None:
+                        continue
+                    try:
+                        start_date = date.fromisoformat(
+                            _required_text(row, "Date", path)
+                        ).isoformat()
+                    except ValueError:
+                        invalid_rows += 1
+                        review_records.append(
+                            {
+                                "source": "kaggle_nba_injuries",
+                                "row_number": row_number,
+                                "source_player_name": relinquished_name,
+                                "status": "INVALID_SOURCE_ROW",
+                                "reason": f"Invalid Date value: {row.get('Date')!r}",
+                            }
+                        )
+                        continue
+                    nba_player_id = mappings.get(relinquished_name)
+                    if nba_player_id is None:
+                        review_records.append(
+                            {
+                                "source": "kaggle_nba_injuries",
+                                "row_number": row_number,
+                                "source_player_name": relinquished_name,
+                                "status": "UNRESOLVED",
+                                "candidate_nba_player_ids": _injury_candidate_nba_ids(
+                                    registry, relinquished_name
+                                ),
+                                "reason": (
+                                    "No exact reviewed injury mapping; normalized names are review "
+                                    "aids and are never merged automatically."
+                                ),
+                            }
+                        )
+                        continue
+                    canonical_player_id = nba_players.get(nba_player_id)
+                    if canonical_player_id is None:
+                        raise NormalizationError(
+                            "Injury mapping references absent NBA player "
+                            f"{nba_player_id!r} for {relinquished_name!r}"
+                        )
+                    event_identity = f"kaggle_nba_injuries/v3/{row_number}/relinquished"
+                    events.append(
+                        {
+                            "schema_version": "1.0.0",
+                            "event_id": f"evt_{uuid5(NAMESPACE_URL, event_identity).hex}",
+                            "canonical_player_id": canonical_player_id,
+                            "event_type": "INJURY",
+                            "status": "HISTORICAL",
+                            "start_date": start_date,
+                            "end_date": None,
+                            "games_missed": None,
+                            "ir_eligible": None,
+                            "description": _optional_text(row.get("Notes")),
+                            "source": "kaggle_nba_injuries",
+                        }
+                    )
+    except zipfile.BadZipFile as error:
+        raise NormalizationError(
+            f"Historical injury archive is not a valid ZIP file: {path}"
+        ) from error
+
+    events.sort(
+        key=lambda event: (event["canonical_player_id"], event["start_date"], event["event_id"])
+    )
+    review_records.sort(key=lambda record: (cast(int, record["row_number"]), record["status"]))
+    return (
+        events,
+        {
+            "schema_version": "1.0.0",
+            "policy": (
+                "Historical injury names require exact reviewed mappings; "
+                "candidate names are never merged automatically."
+            ),
+            "records": review_records,
+            "summary": {
+                "injury_events": len(events),
+                "unresolved_injury_rows": sum(
+                    1 for record in review_records if record["status"] == "UNRESOLVED"
+                ),
+                "skipped_acquisition_side_rows": skipped_acquisitions,
+                "invalid_injury_rows": invalid_rows,
+            },
+        },
+        [_manifest_for(path)],
+    )
+
+
+def _injury_mapping_index(review: dict[str, Any]) -> dict[str, str]:
+    mappings: dict[str, str] = {}
+    for index, item in enumerate(
+        cast(list[dict[str, Any]], review["injury_manual_mappings"]), start=1
+    ):
+        source_name = item["injury_player_name"]
+        if source_name in mappings:
+            raise NormalizationError(
+                f"Duplicate injury mapping for {source_name!r} at entry {index}"
+            )
+        mappings[source_name] = item["nba_player_id"]
+    return mappings
+
+
+def _nba_player_index(registry: PlayerRegistry) -> dict[str, str]:
+    return {
+        nba_player_id: canonical_player_id
+        for canonical_player_id, player in registry.players.items()
+        if (nba_player_id := cast(dict[str, str], player["source_ids"]).get("nba_stats"))
+        is not None
+    }
+
+
+def _injury_candidate_nba_ids(registry: PlayerRegistry, source_name: str) -> list[str]:
+    candidate = normalized_name_candidate(source_name)
+    results = []
+    for player in registry.players.values():
+        source_ids = cast(dict[str, str], player["source_ids"])
+        nba_player_id = source_ids.get("nba_stats")
+        names = [cast(str, player["display_name"]), *cast(list[str], player["aliases"])]
+        if nba_player_id is not None and any(
+            normalized_name_candidate(name) == candidate for name in names
+        ):
+            results.append(nba_player_id)
+    return sorted(results)
 
 
 def _normalize_nba_roster(
@@ -573,12 +767,14 @@ def _validate_processed_data(
     players: list[dict[str, Any]],
     stats: list[dict[str, Any]],
     eligibility: list[dict[str, Any]],
+    injury_events: list[dict[str, Any]],
     unresolved: dict[str, Any],
+    unresolved_injuries: dict[str, Any],
     review: dict[str, Any],
 ) -> dict[str, Any]:
     validators = {
         name: Draft202012Validator(load_schema(name), format_checker=FormatChecker())
-        for name in ("player", "season-stat", "eligibility")
+        for name in ("player", "season-stat", "eligibility", "injury")
     }
     for player in players:
         validators["player"].validate(player)
@@ -587,11 +783,16 @@ def _validate_processed_data(
         _validate_stat_ranges(stat)
     for record in eligibility:
         validators["eligibility"].validate(record)
+    for event in injury_events:
+        validators["injury"].validate(event)
     source_keys = [
         (cast(str, stat["source"]), cast(str, stat["source_record_id"])) for stat in stats
     ]
     if len(source_keys) != len(set(source_keys)):
         raise NormalizationError("Processed season statistics contain duplicate source records")
+    event_ids = [cast(str, event["event_id"]) for event in injury_events]
+    if len(event_ids) != len(set(event_ids)):
+        raise NormalizationError("Processed injury events contain duplicate event IDs")
     nba_years = sorted(
         {cast(int, stat["season_start_year"]) for stat in stats if stat["league_type"] == "NBA"}
     )
@@ -606,10 +807,17 @@ def _validate_processed_data(
         "players": len(players),
         "season_stats": len(stats),
         "eligibility_records": len(eligibility),
+        "injury_events": len(injury_events),
         "unresolved_records": len(cast(list[dict[str, Any]], unresolved["records"])),
+        "unresolved_injury_records": len(
+            cast(list[dict[str, Any]], unresolved_injuries["records"])
+        ),
         "invalid_source_rows": cast(dict[str, int], unresolved["summary"])["invalid_source_rows"],
         "source_rows_without_provider_ids": cast(dict[str, int], unresolved["summary"])[
             "source_rows_without_provider_ids"
+        ],
+        "invalid_injury_rows": cast(dict[str, int], unresolved_injuries["summary"])[
+            "invalid_injury_rows"
         ],
         "nba_season_start_years": nba_years,
         "college_season_start_years": college_years,
@@ -658,9 +866,22 @@ def _load_review_file(path: Path) -> dict[str, Any]:
     value = yaml.safe_load(path.read_text())
     if not isinstance(value, dict):
         raise NormalizationError("Identity review file must be a YAML object")
-    for key in ("manual_mappings", "reviewed_pairs"):
+    for key in ("manual_mappings", "reviewed_pairs", "injury_manual_mappings"):
         if not isinstance(value.get(key), list):
             raise NormalizationError(f"Identity review file requires a {key} list")
+    seen_injury_names: set[str] = set()
+    for index, mapping in enumerate(value["injury_manual_mappings"], start=1):
+        if not isinstance(mapping, dict):
+            raise NormalizationError(f"Injury mapping {index} must be an object")
+        source_name = mapping.get("injury_player_name")
+        nba_player_id = mapping.get("nba_player_id")
+        if not isinstance(source_name, str) or not source_name.strip():
+            raise NormalizationError(f"Injury mapping {index} requires injury_player_name")
+        if not isinstance(nba_player_id, str) or not nba_player_id.strip():
+            raise NormalizationError(f"Injury mapping {index} requires nba_player_id")
+        if source_name in seen_injury_names:
+            raise NormalizationError(f"Duplicate injury mapping for {source_name!r}")
+        seen_injury_names.add(source_name)
     return cast(dict[str, Any], value)
 
 

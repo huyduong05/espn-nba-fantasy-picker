@@ -4,6 +4,10 @@ schema_version: 1.0.0
 # empty until a human has reviewed a source-to-source mapping.
 manual_mappings: []
 
+# Historical Kaggle injury rows do not carry stable player IDs. Add an exact
+# source-name-to-NBA-ID mapping only after review; no name is linked automatically.
+injury_manual_mappings: []
+
 # Independently reviewed high-confidence NCAA-to-NBA pairs. The normalizer
 # measures automated matching accuracy against this sample and fails if any
 # pair is not linked. Source IDs are retained raw identifiers, not names.

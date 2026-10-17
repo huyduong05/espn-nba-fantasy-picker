@@ -5,16 +5,14 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version", "league_config_version", "round", "overall_pick", "draft_slot",
-    "direction", "user_roster", "remaining_players", "manual_overrides"
+    "schema_version", "league_config_version", "round", "overall_pick",
+    "user_roster", "remaining_players", "manual_overrides"
   ],
   "properties": {
     "schema_version": { "const": "1.0.0" },
     "league_config_version": { "const": "1.0.0" },
     "round": { "type": "integer", "minimum": 1, "maximum": 13 },
     "overall_pick": { "type": "integer", "minimum": 1, "maximum": 156 },
-    "draft_slot": { "type": "integer", "minimum": 1, "maximum": 12 },
-    "direction": { "enum": ["FORWARD", "REVERSE"] },
     "user_roster": { "type": "array", "items": { "$ref": "#/$defs/draftPlayer" }, "maxItems": 13 },
     "remaining_players": { "type": "array", "items": { "$ref": "#/$defs/draftPlayer" } },
     "manual_overrides": {

@@ -17,14 +17,12 @@ import yaml
 from fantasy_picker.contracts import validate
 from fantasy_picker.ranking.evaluator import CATEGORIES, EvaluatorError, evaluate_candidates
 
-RECOMMENDER_MODEL_VERSION = "phase_7_draft_recommendation_v1"
+RECOMMENDER_MODEL_VERSION = "phase_7_manual_recommendation_v2"
 _REQUIRED_CONFIG = {
     "schema_version",
     "model_version",
     "top_n",
     "weights",
-    "survival_logistic_scale",
-    "likely_survival_probability",
     "maximum_uncertainty_penalty",
 }
 _REQUIRED_PROJECTION_FIELDS = {
@@ -196,8 +194,6 @@ def recommend_prepared_with_details(
         resources.config,
         category_values_by_id=resources.category_values_by_id,
     )
-    next_pick_distance = _next_pick_distance(draft_state)
-    intervening_picks = _intervening_picks(draft_state)
     candidates: list[dict[str, Any]] = []
     missing_injury_count = 0
     for evaluation in evaluations:
@@ -218,8 +214,8 @@ def recommend_prepared_with_details(
         raise RecommendationError("No remaining candidates have Phase 5 injury assessments")
 
     unfilled_starter_slots = _unfilled_starter_slots(evaluations)
-    _attach_raw_components(candidates, intervening_picks, unfilled_starter_slots, resources.config)
-    _attach_replacement_components(candidates, intervening_picks, resources.config)
+    _attach_raw_components(candidates, unfilled_starter_slots, resources.config)
+    _attach_replacement_components(candidates)
     scored = _score_candidates(candidates, resources.config)
     public_rows = [_public_recommendation(row) for row in scored]
     response = {
@@ -243,7 +239,6 @@ def recommend_prepared_with_details(
         {
             "recommendation": _public_recommendation(row),
             "components": row["components"],
-            "next_pick_distance": next_pick_distance,
         }
         for row in scored
     ]
@@ -324,45 +319,15 @@ def _projection_category_values(projection: Mapping[str, Any]) -> dict[str, floa
     return values
 
 
-def _next_pick_distance(draft_state: Mapping[str, Any]) -> int:
-    overall_pick = _integer(draft_state, "overall_pick")
-    draft_slot = _integer(draft_state, "draft_slot")
-    direction = draft_state.get("direction")
-    if overall_pick >= 156:
-        return 0
-    if direction == "FORWARD":
-        distance = 2 * (12 - draft_slot) + 1
-    elif direction == "REVERSE":
-        distance = 2 * (draft_slot - 1) + 1
-    else:
-        raise RecommendationError("Draft state direction must be FORWARD or REVERSE")
-    return distance if overall_pick + distance <= 156 else 0
-
-
-def _intervening_picks(draft_state: Mapping[str, Any]) -> int:
-    """Return opponent selections before the next personal pick, if one remains."""
-    distance = _next_pick_distance(draft_state)
-    return max(0, distance - 1)
-
-
 def _attach_raw_components(
     candidates: list[dict[str, Any]],
-    intervening_picks: int,
     unfilled_starter_slots: Sequence[str],
     config: Mapping[str, Any],
 ) -> None:
-    scale = float(config["survival_logistic_scale"])
     maximum_uncertainty = float(config["maximum_uncertainty_penalty"])
     for candidate in candidates:
-        rank = int(candidate["local_rank"])
-        survival = (
-            1.0 if intervening_picks == 0 else _sigmoid((rank - (intervening_picks + 1)) / scale)
-        )
         projection = cast(Mapping[str, Any], candidate["projection"])
-        candidate["intervening_picks"] = intervening_picks
         candidate["roster_gain_raw"] = float(candidate["evaluation"]["category_win_gain"])
-        candidate["survival_probability"] = survival
-        candidate["next_pick_urgency_raw"] = 0.0 if intervening_picks == 0 else 1.0 - survival
         candidate["certainty_raw"] = (
             1.0
             - min(max(float(projection["uncertainty_penalty"]), 0.0), maximum_uncertainty)
@@ -374,21 +339,13 @@ def _attach_raw_components(
         candidate["scarcity_raw"] = _scarcity(candidate, candidates, unfilled_starter_slots)
 
 
-def _attach_replacement_components(
-    candidates: list[dict[str, Any]], intervening_picks: int, config: Mapping[str, Any]
-) -> None:
-    if intervening_picks == 0:
-        for candidate in candidates:
-            candidate["replacement_raw"] = 0.0
-        return
-    threshold = float(config["likely_survival_probability"])
+def _attach_replacement_components(candidates: list[dict[str, Any]]) -> None:
     for candidate in candidates:
         usable_slots = set(cast(list[str], candidate["usable_starter_slots"]))
         alternatives = [
             float(other["roster_gain_raw"])
             for other in candidates
             if other is not candidate
-            and float(other["survival_probability"]) >= threshold
             and usable_slots.intersection(set(cast(list[str], other["usable_starter_slots"])))
         ]
         candidate["replacement_raw"] = max(
@@ -441,7 +398,6 @@ def _score_candidates(
     candidates: list[dict[str, Any]], config: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
     roster_gain = _normalize(candidates, "roster_gain_raw")
-    urgency = _normalize(candidates, "next_pick_urgency_raw")
     certainty = _normalize(candidates, "certainty_raw")
     replacement = _normalize(candidates, "replacement_raw")
     scarcity = _normalize(candidates, "scarcity_raw")
@@ -451,7 +407,6 @@ def _score_candidates(
         context = (replacement[index] + scarcity[index]) / 2.0
         pre_injury = (
             float(weights["roster_gain"]) * roster_gain[index]
-            + float(weights["next_pick_urgency"]) * urgency[index]
             + float(weights["scarcity_replacement"]) * context
             + float(weights["certainty"]) * certainty[index]
         )
@@ -481,15 +436,10 @@ def _score_candidates(
                 "category_win_gain": round(float(evaluation["category_win_gain"]), 6),
                 "injury_penalty_pct": round(injury_penalty * 100, 3),
                 "positions": evaluation["positions"],
-                "reason_codes": _reason_codes(
-                    candidate, assessment, scarcity[index], urgency[index]
-                ),
+                "reason_codes": _reason_codes(candidate, assessment, scarcity[index]),
                 "components": {
                     "local_rank": candidate["local_rank"],
-                    "intervening_picks": candidate["intervening_picks"],
-                    "survival_probability": round(float(candidate["survival_probability"]), 6),
                     "roster_gain_raw": round(float(candidate["roster_gain_raw"]), 6),
-                    "next_pick_urgency_raw": round(float(candidate["next_pick_urgency_raw"]), 6),
                     "replacement_raw": round(float(candidate["replacement_raw"]), 6),
                     "scarcity_raw": round(float(candidate["scarcity_raw"]), 6),
                     "certainty_raw": round(float(candidate["certainty_raw"]), 6),
@@ -501,7 +451,6 @@ def _score_candidates(
                     "post_injury_score": round(score, 6),
                     "normalized_components": {
                         "roster_gain": round(roster_gain[index], 6),
-                        "next_pick_urgency": round(urgency[index], 6),
                         "scarcity_replacement": round(context, 6),
                         "certainty": round(certainty[index], 6),
                     },
@@ -548,13 +497,10 @@ def _reason_codes(
     candidate: Mapping[str, Any],
     assessment: Mapping[str, Any],
     normalized_scarcity: float,
-    normalized_urgency: float,
 ) -> list[str]:
     evaluation = cast(Mapping[str, Any], candidate["evaluation"])
     reasons = set(cast(list[str], evaluation["reason_codes"]))
     reasons.update(cast(list[str], assessment["reason_codes"]))
-    if normalized_urgency >= 0.75:
-        reasons.add("NEXT_PICK_RISK")
     if normalized_scarcity >= 0.75:
         reasons.add("POSITION_SCARCITY")
     if float(assessment["injury_penalty"]) > 0:
@@ -578,20 +524,6 @@ def _data_version(
     return f"phase7-{digest[:16]}"
 
 
-def _integer(record: Mapping[str, Any], field: str) -> int:
-    value = record.get(field)
-    if not isinstance(value, int):
-        raise RecommendationError(f"Draft state {field} must be an integer")
-    return value
-
-
-def _sigmoid(value: float) -> float:
-    if value >= 0:
-        return 1.0 / (1.0 + math.exp(-value))
-    exponential = math.exp(value)
-    return exponential / (1.0 + exponential)
-
-
 def _validate_config(config: Mapping[str, Any]) -> None:
     missing = _REQUIRED_CONFIG.difference(config)
     if missing:
@@ -601,14 +533,10 @@ def _validate_config(config: Mapping[str, Any]) -> None:
     if int(config["top_n"]) != 5:
         raise RecommendationError("Phase 7 top_n must be five")
     weights = config["weights"]
-    expected = {"roster_gain", "next_pick_urgency", "scarcity_replacement", "certainty"}
+    expected = {"roster_gain", "scarcity_replacement", "certainty"}
     if not isinstance(weights, Mapping) or set(weights) != expected:
         raise RecommendationError("Recommendation-engine weights are incomplete")
     if not math.isclose(sum(float(value) for value in weights.values()), 1.0):
         raise RecommendationError("Recommendation-engine weights must sum to one")
-    if float(config["survival_logistic_scale"]) <= 0:
-        raise RecommendationError("survival_logistic_scale must be positive")
-    if not 0 < float(config["likely_survival_probability"]) < 1:
-        raise RecommendationError("likely_survival_probability must be between zero and one")
     if not 0 < float(config["maximum_uncertainty_penalty"]) <= 1:
         raise RecommendationError("maximum_uncertainty_penalty must be in (0, 1]")

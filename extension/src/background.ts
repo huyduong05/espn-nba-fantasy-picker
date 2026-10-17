@@ -1,9 +1,11 @@
 import type {
+  ExtensionResponseMessage,
   ExtensionRequestMessage,
   MetadataResponseMessage,
   RecommendationRequestMessage,
   RecommendationResponseMessage,
 } from "./contracts.js";
+import { loadBoard, saveBoard } from "./storage.js";
 
 const API_ROOT = "http://127.0.0.1:8765/api/v1";
 const REQUEST_TIMEOUT_MS = 5_000;
@@ -13,17 +15,18 @@ if (typeof chrome !== "undefined") {
     (
       message: ExtensionRequestMessage,
       _sender,
-      sendResponse: (
-        response: RecommendationResponseMessage | MetadataResponseMessage,
-      ) => void,
+      sendResponse: (response: ExtensionResponseMessage) => void,
     ) => {
-      if (message.type !== "recommend" && message.type !== "metadata") {
-        return false;
+      let request: Promise<ExtensionResponseMessage>;
+      if (message.type === "recommend") {
+        request = requestRecommendations(message);
+      } else if (message.type === "metadata") {
+        request = requestMetadata();
+      } else if (message.type === "load_board") {
+        request = loadManualBoard();
+      } else {
+        request = saveManualBoard(message.board);
       }
-      const request =
-        message.type === "recommend"
-          ? requestRecommendations(message)
-          : requestMetadata();
       void request.then(sendResponse).catch(() =>
         sendResponse({
           ok: false,
@@ -34,6 +37,35 @@ if (typeof chrome !== "undefined") {
       return true;
     },
   );
+}
+
+export async function loadManualBoard(): Promise<
+  import("./contracts.js").LoadBoardResponseMessage
+> {
+  try {
+    return { ok: true, board: await loadBoard(chrome.storage.session) };
+  } catch {
+    return {
+      ok: false,
+      code: "STORAGE_UNAVAILABLE",
+      message: "The manual draft board could not be loaded.",
+    };
+  }
+}
+
+export async function saveManualBoard(
+  board: import("./contracts.js").ManualBoardState,
+): Promise<import("./contracts.js").SaveBoardResponseMessage> {
+  try {
+    await saveBoard(chrome.storage.session, board);
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      code: "STORAGE_UNAVAILABLE",
+      message: "The manual draft board could not be saved.",
+    };
+  }
 }
 
 export async function requestRecommendations(

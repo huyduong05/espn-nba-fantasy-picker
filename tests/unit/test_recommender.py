@@ -11,9 +11,7 @@ from fantasy_picker.contracts import repository_root, validate
 from fantasy_picker.ranking.evaluator import CATEGORIES, write_reference_distribution
 from fantasy_picker.ranking.recommender import (
     _eligible_slots,
-    _intervening_picks,
     _local_ranks,
-    _next_pick_distance,
     _scarcity,
     _score_candidates,
     load_recommender_config,
@@ -23,21 +21,14 @@ from fantasy_picker.ranking.recommender import (
 )
 
 
-def test_snake_next_pick_distance_handles_directions_and_final_pick() -> None:
-    assert _next_pick_distance(_state(draft_slot=1, direction="FORWARD", overall_pick=1)) == 23
-    assert _intervening_picks(_state(draft_slot=1, direction="FORWARD", overall_pick=1)) == 22
-    assert _next_pick_distance(_state(draft_slot=12, direction="FORWARD", overall_pick=12)) == 1
-    assert _next_pick_distance(_state(draft_slot=1, direction="REVERSE", overall_pick=12)) == 1
-    assert _next_pick_distance(_state(draft_slot=12, direction="REVERSE", overall_pick=1)) == 23
-    assert _next_pick_distance(_state(overall_pick=156)) == 0
-
+def test_recommendations_are_slot_independent() -> None:
     projections, state = _inputs()
-    state["overall_pick"] = 156
-    _, details = recommend_with_details(
+    response, details = recommend_with_details(
         state, projections, _reference(), _assessments(projections), _config()
     )
-    assert all(detail["components"]["replacement_raw"] == 0 for detail in details)
-    assert all(detail["components"]["survival_probability"] == 1 for detail in details)
+    assert len(response["recommendations"]) == 5
+    assert all("next_pick_distance" not in detail for detail in details)
+    assert all("next_pick_urgency_raw" not in detail["components"] for detail in details)
 
 
 def test_recommendations_are_schema_valid_with_local_category_evidence() -> None:
@@ -51,7 +42,7 @@ def test_recommendations_are_schema_valid_with_local_category_evidence() -> None
     assert all("components" not in row for row in response["recommendations"])
     assert len(details) == 6
     assert set(details[0]["components"]["category_deltas"]) == set(CATEGORIES)
-    assert "survival_probability" in details[0]["components"]
+    assert "replacement_raw" in details[0]["components"]
 
 
 def test_prepared_resources_reuse_static_indexes_and_data_version() -> None:
@@ -110,17 +101,17 @@ def test_missing_assessments_are_excluded_and_injury_penalty_is_applied() -> Non
     assert adjusted_score == pytest.approx(round(baseline_score * 0.85, 3), abs=0.001)
 
 
-def test_urgent_high_rank_can_beat_a_slightly_stronger_survivor() -> None:
+def test_stronger_roster_gain_wins_when_other_components_are_equal() -> None:
     candidates = [
-        _scored_candidate(100, roster_gain=0.0, urgency=0.0),
-        _scored_candidate(101, roster_gain=0.51, urgency=0.99),
-        _scored_candidate(102, roster_gain=0.52, urgency=0.10),
-        _scored_candidate(103, roster_gain=1.0, urgency=1.0),
+        _scored_candidate(100, roster_gain=0.0),
+        _scored_candidate(101, roster_gain=0.51),
+        _scored_candidate(102, roster_gain=0.52),
+        _scored_candidate(103, roster_gain=1.0),
     ]
     rows = _score_candidates(candidates, _config())
     ranks = {row["canonical_player_id"]: row["rank"] for row in rows}
 
-    assert ranks[_id(101)] < ranks[_id(102)]
+    assert ranks[_id(102)] < ranks[_id(101)]
 
 
 def test_ranking_details_are_deterministic_and_ties_use_canonical_id() -> None:
@@ -207,8 +198,6 @@ def _state(
     *,
     roster: list[dict[str, Any]] | None = None,
     remaining: list[dict[str, Any]] | None = None,
-    draft_slot: int = 1,
-    direction: str = "FORWARD",
     overall_pick: int = 25,
 ) -> dict[str, Any]:
     return {
@@ -216,8 +205,6 @@ def _state(
         "league_config_version": "1.0.0",
         "round": 3,
         "overall_pick": overall_pick,
-        "draft_slot": draft_slot,
-        "direction": direction,
         "user_roster": [] if roster is None else roster,
         "remaining_players": [] if remaining is None else remaining,
         "manual_overrides": {"added_player_names": [], "removed_player_names": []},
@@ -311,7 +298,7 @@ def _set_projection_value(projection: dict[str, Any], value: float) -> None:
     projection["fta"] = value * 2
 
 
-def _scored_candidate(index: int, *, roster_gain: float, urgency: float) -> dict[str, Any]:
+def _scored_candidate(index: int, *, roster_gain: float) -> dict[str, Any]:
     deltas = {category: {"win_gain": roster_gain / len(CATEGORIES)} for category in CATEGORIES}
     return {
         "evaluation": {
@@ -326,10 +313,7 @@ def _scored_candidate(index: int, *, roster_gain: float, urgency: float) -> dict
         "projection": {"uncertainty_penalty": 0.0},
         "assessment": {"injury_penalty": 0.0, "reason_codes": ["NO_INJURY_DATA"]},
         "local_rank": index,
-        "intervening_picks": 22,
         "roster_gain_raw": roster_gain,
-        "survival_probability": 1.0 - urgency,
-        "next_pick_urgency_raw": urgency,
         "certainty_raw": 1.0,
         "scarcity_raw": 0.5,
         "replacement_raw": 0.5,

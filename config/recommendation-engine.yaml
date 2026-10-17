@@ -1,12 +1,9 @@
-# Phase 7 deterministic, local draft-aware recommendation configuration.
+# Phase 7 deterministic, local roster-aware recommendation configuration.
 schema_version: "1.0.0"
-model_version: "phase_7_draft_recommendation_v1"
+model_version: "phase_7_manual_recommendation_v2"
 top_n: 5
 weights:
-  roster_gain: 0.60
-  next_pick_urgency: 0.25
-  scarcity_replacement: 0.10
-  certainty: 0.05
-survival_logistic_scale: 6.0
-likely_survival_probability: 0.50
+  roster_gain: 0.75
+  scarcity_replacement: 0.15
+  certainty: 0.10
 maximum_uncertainty_penalty: 0.35

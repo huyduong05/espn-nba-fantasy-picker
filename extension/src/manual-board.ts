@@ -7,16 +7,15 @@ import {
   type PlayerIndexPlayer,
 } from "./contracts.js";
 
-const TEAM_COUNT = 12;
 const MAX_ROSTER_SIZE = 13;
-const MAX_DRAFT_PICKS = TEAM_COUNT * MAX_ROSTER_SIZE;
+const MAX_DRAFT_PICKS = 156;
 
 export type DraftStateResult =
   | { ok: true; draftState: DraftState; overallPick: number }
   | { ok: false; message: string };
 
 export function emptyBoard(): ManualBoardState {
-  return { draft_slot: null, roster_ids: [], taken_ids: [] };
+  return { roster_ids: [], taken_ids: [] };
 }
 
 export function searchPlayers(
@@ -27,11 +26,18 @@ export function searchPlayers(
   if (!normalizedQuery) {
     return [];
   }
-  return index.players.filter((player) =>
-    [player.display_name, ...player.aliases].some((name) =>
-      normalizeName(name).includes(normalizedQuery),
-    ),
-  );
+  return index.players
+    .map((player, indexPosition) => ({
+      player,
+      indexPosition,
+      score: matchScore(player, normalizedQuery),
+    }))
+    .filter((entry) => entry.score !== null)
+    .sort(
+      (left, right) =>
+        left.score! - right.score! || left.indexPosition - right.indexPosition,
+    )
+    .map((entry) => entry.player);
 }
 
 export function addPlayer(
@@ -52,6 +58,9 @@ export function addPlayer(
     board.taken_ids.includes(playerId)
   ) {
     throw new Error("That player is already on the manual draft board.");
+  }
+  if (board.roster_ids.length + board.taken_ids.length >= MAX_DRAFT_PICKS) {
+    throw new Error("All 156 draft picks are already recorded.");
   }
   if (destination === "roster" && board.roster_ids.length >= MAX_ROSTER_SIZE) {
     throw new Error("My roster already has the maximum 13 players.");
@@ -80,27 +89,10 @@ export function removePlayer(
   };
 }
 
-export function setDraftSlot(
-  board: ManualBoardState,
-  draftSlot: number | null,
-): ManualBoardState {
-  return { ...board, draft_slot: draftSlot };
-}
-
 export function deriveDraftState(
   index: PlayerIndex,
   board: ManualBoardState,
 ): DraftStateResult {
-  if (
-    board.draft_slot === null ||
-    board.draft_slot < 1 ||
-    board.draft_slot > TEAM_COUNT
-  ) {
-    return {
-      ok: false,
-      message: "Choose your draft slot before requesting suggestions.",
-    };
-  }
   const draftedIds = [...board.roster_ids, ...board.taken_ids];
   if (new Set(draftedIds).size !== draftedIds.length) {
     return {
@@ -124,19 +116,7 @@ export function deriveDraftState(
   if (overallPick > MAX_DRAFT_PICKS) {
     return { ok: false, message: "All 156 draft picks are already recorded." };
   }
-  const round = Math.ceil(overallPick / TEAM_COUNT);
-  const direction = round % 2 === 1 ? "FORWARD" : "REVERSE";
-  const pickInRound = ((overallPick - 1) % TEAM_COUNT) + 1;
-  const expectedPick =
-    direction === "FORWARD"
-      ? board.draft_slot
-      : TEAM_COUNT + 1 - board.draft_slot;
-  if (pickInRound !== expectedPick) {
-    return {
-      ok: false,
-      message: "The manual board does not place you at the current pick yet.",
-    };
-  }
+  const round = Math.ceil(overallPick / 12);
   const remaining = index.players.filter(
     (player) => !draftedIds.includes(player.canonical_player_id),
   );
@@ -151,8 +131,6 @@ export function deriveDraftState(
       league_config_version: SCHEMA_VERSION,
       round,
       overall_pick: overallPick,
-      draft_slot: board.draft_slot,
-      direction,
       user_roster: board.roster_ids.map((id) =>
         draftPlayer(playersById.get(id)!),
       ),
@@ -178,4 +156,19 @@ function normalizeName(value: string): string {
     .toLocaleLowerCase()
     .replace(/[^a-z0-9]+/gu, " ")
     .trim();
+}
+
+function matchScore(player: PlayerIndexPlayer, query: string): number | null {
+  const names = [player.display_name, ...player.aliases].map(normalizeName);
+  let best: number | null = null;
+  for (const name of names) {
+    if (name === query) {
+      best = Math.min(best ?? 0, 0);
+    } else if (name.startsWith(query)) {
+      best = Math.min(best ?? 1, 1);
+    } else if (name.includes(query)) {
+      best = Math.min(best ?? 2, 2);
+    }
+  }
+  return best;
 }

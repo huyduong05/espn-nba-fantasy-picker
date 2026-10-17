@@ -18,6 +18,5 @@ export {
   emptyBoard,
   removePlayer,
   searchPlayers,
-  setDraftSlot,
 } from "./manual-board.js";
 export { loadBoard, saveBoard } from "./storage.js";

@@ -18,5 +18,11 @@
       "js": ["content.js"],
       "run_at": "document_idle"
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["player-index.json"],
+      "matches": ["https://fantasy.espn.com/*"]
+    }
   ]
 }

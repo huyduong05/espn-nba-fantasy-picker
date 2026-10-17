@@ -17,8 +17,6 @@ export interface DraftState {
   league_config_version: typeof SCHEMA_VERSION;
   round: number;
   overall_pick: number;
-  draft_slot: number;
-  direction: "FORWARD" | "REVERSE";
   user_roster: DraftPlayer[];
   remaining_players: DraftPlayer[];
   manual_overrides: {
@@ -65,7 +63,6 @@ export interface PlayerIndex {
 }
 
 export interface ManualBoardState {
-  draft_slot: number | null;
   roster_ids: string[];
   taken_ids: string[];
 }
@@ -79,8 +76,20 @@ export interface MetadataRequestMessage {
   type: "metadata";
 }
 
+export interface LoadBoardRequestMessage {
+  type: "load_board";
+}
+
+export interface SaveBoardRequestMessage {
+  type: "save_board";
+  board: ManualBoardState;
+}
+
 export type ExtensionRequestMessage =
-  RecommendationRequestMessage | MetadataRequestMessage;
+  | RecommendationRequestMessage
+  | MetadataRequestMessage
+  | LoadBoardRequestMessage
+  | SaveBoardRequestMessage;
 
 export type RecommendationResponseMessage =
   | { ok: true; response: unknown }
@@ -89,3 +98,16 @@ export type RecommendationResponseMessage =
 export type MetadataResponseMessage =
   | { ok: true; metadata: unknown }
   | { ok: false; code: string; message: string };
+
+export type LoadBoardResponseMessage =
+  | { ok: true; board: ManualBoardState }
+  | { ok: false; code: string; message: string };
+
+export type SaveBoardResponseMessage =
+  { ok: true } | { ok: false; code: string; message: string };
+
+export type ExtensionResponseMessage =
+  | RecommendationResponseMessage
+  | MetadataResponseMessage
+  | LoadBoardResponseMessage
+  | SaveBoardResponseMessage;

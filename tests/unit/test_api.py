@@ -54,7 +54,7 @@ def test_health_metadata_and_recommendations_use_loaded_artifacts(app: Any) -> N
     assert health.status_code == 200
     assert health.json == {"status": "ready", "service_version": "0.1.0"}
     assert metadata.status_code == 200
-    assert metadata.json["model_version"] == "phase_7_draft_recommendation_v1"
+    assert metadata.json["model_version"] == "phase_7_manual_recommendation_v2"
     assert metadata.json["data_version"]
     assert {artifact["name"] for artifact in metadata.json["artifacts"]} == {
         "projections",
@@ -168,8 +168,6 @@ def _state(app: Any) -> dict[str, Any]:
         "league_config_version": "1.0.0",
         "round": 3,
         "overall_pick": 25,
-        "draft_slot": 1,
-        "direction": "FORWARD",
         "user_roster": [],
         "remaining_players": remaining,
         "manual_overrides": {"added_player_names": [], "removed_player_names": []},

@@ -9,19 +9,45 @@ import type {
   RecommendationResponse,
 } from "./contracts.js";
 import { assessFreshness, type Freshness } from "./freshness.js";
-import { deriveDraftState } from "./manual-board.js";
+import { deriveDraftState, emptyBoard } from "./manual-board.js";
 import { mountPanel } from "./panel.js";
-import { loadBoard, saveBoard } from "./storage.js";
 
 void bootstrap();
 
 async function bootstrap(): Promise<void> {
   const index = await loadIndex();
   mountPanel(document, index, {
-    loadBoard: () => loadBoard(chrome.storage.session),
-    saveBoard: (board) => saveBoard(chrome.storage.session, board),
+    loadBoard: loadManualBoard,
+    saveBoard: saveManualBoard,
     suggest: (board) => suggest(index, board),
   });
+}
+
+async function loadManualBoard(): Promise<ManualBoardState> {
+  const response: unknown = await chrome.runtime.sendMessage({
+    type: "load_board",
+  });
+  if (isLoadBoardResponse(response)) {
+    return response.board;
+  }
+  if (isErrorResponse(response)) {
+    throw new Error(response.message);
+  }
+  return emptyBoard();
+}
+
+async function saveManualBoard(board: ManualBoardState): Promise<void> {
+  const response: unknown = await chrome.runtime.sendMessage({
+    type: "save_board",
+    board,
+  });
+  if (!isSaveBoardResponse(response)) {
+    throw new Error(
+      isErrorResponse(response)
+        ? response.message
+        : "The manual draft board could not be saved.",
+    );
+  }
 }
 
 async function loadIndex(): Promise<PlayerIndex> {
@@ -88,5 +114,41 @@ function isPlayerIndex(value: unknown): value is PlayerIndex {
     "players" in value &&
     (value as PlayerIndex).index_version === "phase_9_player_index_v1" &&
     Array.isArray((value as PlayerIndex).players)
+  );
+}
+
+function isLoadBoardResponse(
+  value: unknown,
+): value is { ok: true; board: ManualBoardState } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "ok" in value &&
+    value.ok === true &&
+    "board" in value &&
+    typeof value.board === "object" &&
+    value.board !== null
+  );
+}
+
+function isSaveBoardResponse(value: unknown): value is { ok: true } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "ok" in value &&
+    value.ok === true
+  );
+}
+
+function isErrorResponse(
+  value: unknown,
+): value is { ok: false; message: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "ok" in value &&
+    value.ok === false &&
+    "message" in value &&
+    typeof value.message === "string"
   );
 }

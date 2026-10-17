@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { PlayerIndex } from "../src/contracts.js";
+import type { PlayerIndex, PlayerIndexPlayer } from "../src/contracts.js";
 import {
   addPlayer,
   deriveDraftState,
   emptyBoard,
   searchPlayers,
-  setDraftSlot,
 } from "../src/manual-board.js";
 
 const index: PlayerIndex = {
@@ -14,12 +13,17 @@ const index: PlayerIndex = {
   index_version: "phase_9_player_index_v1",
   generated_at: "2026-10-17T12:00:00Z",
   input_fingerprint: "phase9-fixture",
-  players: Array.from({ length: 30 }, (_, value) => ({
-    canonical_player_id: `plr_${String(value + 1).padStart(32, "0")}`,
-    display_name: value === 0 ? "José Player" : `Player ${value + 1}`,
-    aliases: value === 0 ? ["Jose Player"] : [],
-    positions: ["PG"],
-  })),
+  players: [
+    player(1, "José Player", ["Jose Player"]),
+    player(2, "Player One"),
+    player(3, "Player Two"),
+    player(4, "Player Three"),
+    player(5, "Player Four"),
+    player(6, "Player Five"),
+    player(7, "Player Six"),
+    player(8, "Chris Paul", ["CP3"]),
+    player(9, "Paul George"),
+  ],
 };
 
 describe("manual draft board", () => {
@@ -41,45 +45,58 @@ describe("manual draft board", () => {
     );
   });
 
-  it("derives a valid opening-pick request from the selected draft slot", () => {
-    const result = deriveDraftState(index, setDraftSlot(emptyBoard(), 1));
+  it("ranks exact, prefix, alias, and partial name matches in prepared order", () => {
+    expect(
+      searchPlayers(index, "paul").map((player) => player.display_name),
+    ).toEqual(["Paul George", "Chris Paul"]);
+    expect(
+      searchPlayers(index, "cp3").map((player) => player.display_name),
+    ).toEqual(["Chris Paul"]);
+    expect(searchPlayers(index, "player").slice(0, 3)).toEqual(
+      index.players.slice(1, 4),
+    );
+  });
+
+  it("derives a recommendation request without a draft slot", () => {
+    const result = deriveDraftState(index, emptyBoard());
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.overallPick).toBe(1);
       expect(result.draftState.round).toBe(1);
-      expect(result.draftState.direction).toBe("FORWARD");
-      expect(result.draftState.remaining_players).toHaveLength(30);
+      expect(result.draftState.remaining_players).toHaveLength(9);
+      expect(result.draftState).not.toHaveProperty("draft_slot");
+      expect(result.draftState).not.toHaveProperty("direction");
     }
   });
 
-  it("blocks a board when it is not the user's pick", () => {
+  it("allows a board update and recommendation request at any pick", () => {
     const board = addPlayer(
       emptyBoard(),
       index.players[0]!.canonical_player_id,
       "taken",
       index,
     );
-    const result = deriveDraftState(index, setDraftSlot(board, 1));
-
-    expect(result).toEqual({
-      ok: false,
-      message: "The manual board does not place you at the current pick yet.",
-    });
-  });
-
-  it("derives the reverse direction on a later round", () => {
-    let board = emptyBoard();
-    for (const player of index.players.slice(0, 23)) {
-      board = addPlayer(board, player.canonical_player_id, "taken", index);
-    }
-    const result = deriveDraftState(index, setDraftSlot(board, 1));
+    const result = deriveDraftState(index, board);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.overallPick).toBe(24);
-      expect(result.draftState.round).toBe(2);
-      expect(result.draftState.direction).toBe("REVERSE");
+      expect(result.overallPick).toBe(2);
+      expect(result.draftState.round).toBe(1);
+      expect(result.draftState.user_roster).toEqual([]);
     }
   });
 });
+
+function player(
+  indexValue: number,
+  display_name: string,
+  aliases: string[] = [],
+): PlayerIndexPlayer {
+  return {
+    canonical_player_id: `plr_${String(indexValue).padStart(32, "0")}`,
+    display_name,
+    aliases,
+    positions: ["PG"],
+  };
+}

@@ -243,8 +243,6 @@ def _draft_state(
         "league_config_version": "1.0.0",
         "round": 3,
         "overall_pick": 25,
-        "draft_slot": 1,
-        "direction": "FORWARD",
         "user_roster": roster,
         "remaining_players": remaining,
         "manual_overrides": {"added_player_names": [], "removed_player_names": []},

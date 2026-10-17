@@ -129,6 +129,14 @@ status, and missing recent events must not be treated as evidence of perfect
 health. Run `.venv/bin/fantasy-picker data fetch-injuries` to acquire or verify
 the archive and its publisher metadata.
 
+During `fantasy-picker data normalize`, only `Relinquished` archive entries are
+converted to historical absence events. The archive has no stable player IDs, so
+each source name must be explicitly reviewed in `injury_manual_mappings` in
+`config/identity-review.yaml` and mapped to an NBA player ID. Unmapped names and
+name-based candidate IDs are written to `data/processed/unresolved_injury_matches.json`;
+they are not linked automatically. The archive has no defensible end dates or
+games-missed totals, so those normalized fields remain unknown.
+
 Current status may be acquired from the NBA's official injury reports under the
 same user-directed educational-use decision as NBA.com statistics. Those reports
 must remain separately labeled with NBA.com terms and cached before draft time.

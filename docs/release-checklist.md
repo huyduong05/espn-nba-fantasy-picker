@@ -49,7 +49,7 @@ completed copy beside the local release evidence.
 | Browser reports a CORS or unavailable service error | Reload the unpacked extension, copy its current ID, export the matching origin, and restart the API. |
 | Port 8765 is busy | Stop the process using the port before starting the local service again. |
 | Freshness warning | Rebuild the dated projections, injury assessment, and reference artifacts, then rebuild the player index and extension. |
-| Board is invalid or not at your turn | Correct the selected draft slot and manually add/remove the relevant players; the extension will not guess. |
+| Board cannot be scored | Check the manually recorded roster and taken players; the extension will not guess missing draft state. |
 | Board did not restore | Confirm the current Chrome session is still open; session storage intentionally clears after the browser session ends. |
 | Request exceeds five seconds | Confirm local artifacts are valid and the API is running, then use **Retry suggestions**. |
 
