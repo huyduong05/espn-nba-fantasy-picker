@@ -1,10 +1,11 @@
-.PHONY: install check check-python check-extension test test-python test-extension
+.PHONY: install check check-python check-extension test test-python test-extension release
 
 install:
 	python3 -m venv .venv
 	.venv/bin/python -m pip install --upgrade pip
-	.venv/bin/python -m pip install -e '.[dev]'
-	npm --prefix extension install
+	.venv/bin/python -m pip install --requirement requirements.lock
+	.venv/bin/python -m pip install --editable . --no-deps
+	npm --prefix extension ci
 
 check: check-python check-extension
 
@@ -25,4 +26,7 @@ test-python:
 
 test-extension:
 	npm --prefix extension test
+
+release: check
+	.venv/bin/python scripts/release.py
 

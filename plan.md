@@ -429,6 +429,10 @@ Completion gate:
 
 ### Phase 11 — Draft rehearsal and release checklist
 
+Status: **Implementation complete (2026-10-17); target-Mac clean-install,
+offline, benchmark, and full manual-rehearsal evidence are still required before
+the completion gate is met.**
+
 Tasks:
 
 - Run a complete mock draft using the manual board.
