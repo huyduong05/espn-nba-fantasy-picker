@@ -194,14 +194,22 @@ def evaluate_candidates(
     draft_state: Mapping[str, Any],
     projections: Sequence[Mapping[str, Any]],
     reference: Mapping[str, Any],
+    *,
+    projection_by_id: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Evaluate each resolved remaining player against the current draft roster."""
     _validate_reference(reference)
     _validate_draft_state(draft_state)
-    projection_by_id = {_player_id(row): row for row in projections}
-    roster = _players_from_draft_state(draft_state["user_roster"], projection_by_id, "user_roster")
+    resolved_projections = (
+        projection_by_id
+        if projection_by_id is not None
+        else {_player_id(row): row for row in projections}
+    )
+    roster = _players_from_draft_state(
+        draft_state["user_roster"], resolved_projections, "user_roster"
+    )
     candidates = _players_from_draft_state(
-        draft_state["remaining_players"], projection_by_id, "remaining_players"
+        draft_state["remaining_players"], resolved_projections, "remaining_players"
     )
     if len(roster) > int(reference["configuration"]["roster_size"]):
         raise EvaluatorError("User roster exceeds the configured 13-player active roster")

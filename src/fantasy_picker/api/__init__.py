@@ -25,10 +25,12 @@ from fantasy_picker.ranking.evaluator import (
     load_reference_distribution,
 )
 from fantasy_picker.ranking.recommender import (
+    PreparedRecommendationResources,
     RecommendationError,
     load_injury_assessments,
     load_recommender_config,
-    recommend,
+    prepare_recommendation_resources,
+    recommend_prepared,
 )
 
 _EXTENSION_ORIGIN = re.compile(r"^chrome-extension://[a-p]{32}$")
@@ -58,6 +60,7 @@ class InferenceResources:
     reference: dict[str, Any]
     injury_assessments: dict[str, dict[str, Any]]
     recommender_config: dict[str, Any]
+    prepared_recommender: PreparedRecommendationResources
     metadata: dict[str, Any]
 
 
@@ -157,13 +160,7 @@ def create_app(
             )
         state, excluded_count = _exclude_unresolved_remaining(payload)
         try:
-            response = recommend(
-                state,
-                resources.projections,
-                resources.reference,
-                resources.injury_assessments,
-                resources.recommender_config,
-            )
+            response = recommend_prepared(state, resources.prepared_recommender)
         except (EvaluatorError, RecommendationError) as error:
             _log_event("recommendation_rejected", code="UNPROCESSABLE_DRAFT_STATE")
             return _error("UNPROCESSABLE_DRAFT_STATE", str(error), 422)
@@ -184,6 +181,9 @@ def _load_resources(paths: ArtifactPaths) -> InferenceResources | None:
         reference = load_reference_distribution(paths.reference)
         assessments = load_injury_assessments(paths.injury_assessments)
         config = load_recommender_config(paths.recommender_config)
+        prepared_recommender = prepare_recommendation_resources(
+            projections, reference, assessments, config
+        )
     except (EvaluatorError, RecommendationError, OSError, ValueError) as error:
         _log_event("artifact_load_failed", error_type=type(error).__name__)
         return None
@@ -192,6 +192,7 @@ def _load_resources(paths: ArtifactPaths) -> InferenceResources | None:
         reference=reference,
         injury_assessments=assessments,
         recommender_config=config,
+        prepared_recommender=prepared_recommender,
         metadata={
             "schema_version": "1.0.0",
             "service_version": __version__,

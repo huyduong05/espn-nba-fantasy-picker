@@ -4,6 +4,7 @@ import type {
   PlayerIndexPlayer,
   RecommendationResponse,
 } from "./contracts.js";
+import type { Freshness } from "./freshness.js";
 import {
   addPlayer,
   emptyBoard,
@@ -15,7 +16,10 @@ import {
 export interface PanelCallbacks {
   loadBoard: () => Promise<ManualBoardState>;
   saveBoard: (board: ManualBoardState) => Promise<void>;
-  suggest: (board: ManualBoardState) => Promise<RecommendationResponse>;
+  suggest: (board: ManualBoardState) => Promise<{
+    response: RecommendationResponse;
+    freshness: Freshness;
+  }>;
 }
 
 export interface MountedPanel {
@@ -44,6 +48,7 @@ export function mountPanel(
 
   let board = emptyBoard();
   let selectedPlayer: PlayerIndexPlayer | null = null;
+  let suggestionPending = false;
   const render = (): void => {
     panel.replaceChildren();
     const heading = element(document, "h2", "Fantasy Picker");
@@ -158,23 +163,44 @@ export function mountPanel(
     };
     const suggest = document.createElement("button");
     suggest.textContent = "Suggest picks";
-    suggest.addEventListener("click", () => {
+    suggest.disabled = suggestionPending;
+    const retry = document.createElement("button");
+    retry.textContent = "Retry suggestions";
+    retry.hidden = true;
+    const requestSuggestions = (): void => {
+      if (suggestionPending) {
+        return;
+      }
+      suggestionPending = true;
+      suggest.disabled = true;
+      retry.hidden = true;
       setStatus("Loading recommendations…", "info");
       void callbacks
         .suggest(board)
-        .then((response) => {
-          setStatus(`Updated in ${response.latency_ms} ms.`, "info");
-          renderRecommendations(document, recommendations, response);
+        .then(({ response, freshness }) => {
+          const freshnessMessage = freshnessStatus(freshness);
+          setStatus(
+            `Updated in ${response.latency_ms} ms.${freshnessMessage ? ` ${freshnessMessage}` : ""}`,
+            "info",
+          );
+          renderRecommendations(document, recommendations, response, freshness);
         })
-        .catch((error: unknown) =>
+        .catch((error: unknown) => {
           setStatus(
             error instanceof Error
               ? error.message
               : "Unable to request suggestions.",
             "error",
-          ),
-        );
-    });
+          );
+          retry.hidden = false;
+        })
+        .finally(() => {
+          suggestionPending = false;
+          suggest.disabled = false;
+        });
+    };
+    suggest.addEventListener("click", requestSuggestions);
+    retry.addEventListener("click", requestSuggestions);
     const clear = document.createElement("button");
     clear.textContent = "Clear manual board";
     clear.addEventListener("click", () => void updateBoard(emptyBoard()));
@@ -190,6 +216,7 @@ export function mountPanel(
       list("My roster", board.roster_ids),
       list("Taken players", board.taken_ids),
       suggest,
+      retry,
       clear,
       status,
       recommendations,
@@ -238,10 +265,11 @@ function option(
   return result;
 }
 
-function renderRecommendations(
+export function renderRecommendations(
   document: Document,
   container: HTMLDivElement,
   response: RecommendationResponse,
+  freshness?: Freshness,
 ): void {
   container.replaceChildren();
   container.append(
@@ -259,6 +287,20 @@ function renderRecommendations(
   for (const warning of response.warnings) {
     container.append(element(document, "p", `Warning: ${warning}`, "warning"));
   }
+  const freshnessMessage = freshnessStatus(freshness);
+  if (freshnessMessage) {
+    container.append(element(document, "p", freshnessMessage, "warning"));
+  }
+}
+
+function freshnessStatus(freshness: Freshness | undefined): string | null {
+  if (!freshness || freshness.status === "fresh") {
+    return null;
+  }
+  if (freshness.status === "stale") {
+    return `Warning: prepared data is ${freshness.ageDays} days old; rebuild artifacts before the draft.`;
+  }
+  return `Warning: ${freshness.message}`;
 }
 
 function styles(): string {

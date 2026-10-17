@@ -7,6 +7,7 @@ import json
 import math
 import time
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -55,6 +56,19 @@ _STARTER_SLOTS = ("PG", "SG", "SF", "PF", "C", "G", "F", "UTIL1", "UTIL2", "UTIL
 
 class RecommendationError(RuntimeError):
     """A missing or invalid local recommendation input."""
+
+
+@dataclass(frozen=True)
+class PreparedRecommendationResources:
+    """Draft-invariant recommendation inputs prepared once at API startup."""
+
+    projections: Sequence[Mapping[str, Any]]
+    reference: Mapping[str, Any]
+    injury_assessments: Mapping[str, Mapping[str, Any]]
+    config: Mapping[str, Any]
+    projection_by_id: Mapping[str, Mapping[str, Any]]
+    category_values_by_id: Mapping[str, Mapping[str, float]]
+    data_version: str
 
 
 def load_recommender_config(path: Path) -> dict[str, Any]:
@@ -120,31 +134,82 @@ def recommend_with_details(
     config: Mapping[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Return the public response plus local-only raw scoring details."""
-    started = time.perf_counter()
+    return recommend_prepared_with_details(
+        draft_state,
+        prepare_recommendation_resources(projections, reference, injury_assessments, config),
+    )
+
+
+def prepare_recommendation_resources(
+    projections: Sequence[Mapping[str, Any]],
+    reference: Mapping[str, Any],
+    injury_assessments: Mapping[str, Mapping[str, Any]],
+    config: Mapping[str, Any],
+) -> PreparedRecommendationResources:
+    """Validate and cache values that cannot change during a draft request."""
     _validate_config(config)
     projection_by_id = _projection_index(projections)
+    category_values_by_id = {
+        player_id: _projection_category_values(projection)
+        for player_id, projection in projection_by_id.items()
+    }
+    return PreparedRecommendationResources(
+        projections=projections,
+        reference=reference,
+        injury_assessments=injury_assessments,
+        config=config,
+        projection_by_id=projection_by_id,
+        category_values_by_id=category_values_by_id,
+        data_version=_data_version(projections, reference, injury_assessments),
+    )
+
+
+def recommend_prepared(
+    draft_state: Mapping[str, Any], resources: PreparedRecommendationResources
+) -> dict[str, Any]:
+    """Score a draft state against startup-prepared immutable resources."""
+    response, _ = recommend_prepared_with_details(draft_state, resources)
+    return response
+
+
+def recommend_prepared_with_details(
+    draft_state: Mapping[str, Any], resources: PreparedRecommendationResources
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Return recommendations without rebuilding static artifact indexes."""
+    started = time.perf_counter()
     try:
-        evaluations = evaluate_candidates(draft_state, projections, reference)
+        evaluations = evaluate_candidates(
+            draft_state,
+            resources.projections,
+            resources.reference,
+            projection_by_id=resources.projection_by_id,
+        )
     except EvaluatorError as error:
         raise RecommendationError(str(error)) from error
     if not evaluations:
         raise RecommendationError("Draft state has no resolved remaining candidates")
 
-    local_ranks = _local_ranks(evaluations, projection_by_id, reference, config)
+    local_ranks = _local_ranks(
+        evaluations,
+        resources.projection_by_id,
+        resources.reference,
+        resources.config,
+        category_values_by_id=resources.category_values_by_id,
+    )
     next_pick_distance = _next_pick_distance(draft_state)
     intervening_picks = _intervening_picks(draft_state)
     candidates: list[dict[str, Any]] = []
     missing_injury_count = 0
     for evaluation in evaluations:
         player_id = cast(str, evaluation["canonical_player_id"])
-        assessment = injury_assessments.get(player_id)
+        assessment = resources.injury_assessments.get(player_id)
         if assessment is None:
             missing_injury_count += 1
             continue
         candidates.append(
             {
                 "evaluation": evaluation,
-                "projection": projection_by_id[player_id],
+                "projection": resources.projection_by_id[player_id],
                 "assessment": assessment,
                 "local_rank": local_ranks[player_id],
             }
@@ -153,17 +218,17 @@ def recommend_with_details(
         raise RecommendationError("No remaining candidates have Phase 5 injury assessments")
 
     unfilled_starter_slots = _unfilled_starter_slots(evaluations)
-    _attach_raw_components(candidates, intervening_picks, unfilled_starter_slots, config)
-    _attach_replacement_components(candidates, intervening_picks, config)
-    scored = _score_candidates(candidates, config)
+    _attach_raw_components(candidates, intervening_picks, unfilled_starter_slots, resources.config)
+    _attach_replacement_components(candidates, intervening_picks, resources.config)
+    scored = _score_candidates(candidates, resources.config)
     public_rows = [_public_recommendation(row) for row in scored]
     response = {
         "schema_version": "1.0.0",
         "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "data_version": _data_version(projections, reference, injury_assessments),
+        "data_version": resources.data_version,
         "model_version": RECOMMENDER_MODEL_VERSION,
         "latency_ms": round((time.perf_counter() - started) * 1000, 3),
-        "recommendations": public_rows[: int(config["top_n"])],
+        "recommendations": public_rows[: int(resources.config["top_n"])],
         "warnings": (
             [f"INJURY_ASSESSMENT_MISSING:{missing_injury_count}"] if missing_injury_count else []
         ),
@@ -221,14 +286,19 @@ def _local_ranks(
     projections: Mapping[str, Mapping[str, Any]],
     reference: Mapping[str, Any],
     config: Mapping[str, Any],
+    *,
+    category_values_by_id: Mapping[str, Mapping[str, float]] | None = None,
 ) -> dict[str, int]:
     category_reference = cast(Mapping[str, Any], reference["categories"])
     maximum_uncertainty = float(config["maximum_uncertainty_penalty"])
     scores = []
     for evaluation in evaluations:
         player_id = cast(str, evaluation["canonical_player_id"])
-        projection = projections[player_id]
-        values = _projection_category_values(projection)
+        values = (
+            category_values_by_id[player_id]
+            if category_values_by_id is not None
+            else _projection_category_values(projections[player_id])
+        )
         composite = sum(
             (float(category_reference[category]["mean"]) - values[category])
             / float(category_reference[category]["standard_deviation"])
@@ -237,7 +307,9 @@ def _local_ranks(
             / float(category_reference[category]["standard_deviation"])
             for category in CATEGORIES
         )
-        uncertainty = min(max(float(projection["uncertainty_penalty"]), 0.0), maximum_uncertainty)
+        uncertainty = min(
+            max(float(projections[player_id]["uncertainty_penalty"]), 0.0), maximum_uncertainty
+        )
         availability_score = composite - uncertainty * len(CATEGORIES)
         scores.append((-availability_score, player_id))
     return {player_id: rank for rank, (_, player_id) in enumerate(sorted(scores), start=1)}

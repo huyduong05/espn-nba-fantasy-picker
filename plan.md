@@ -399,6 +399,9 @@ Completion gate:
 
 ### Phase 10 — End-to-end integration and latency hardening
 
+Status: **Implementation complete (2026-10-17); target-Mac benchmark results
+are still required before the completion gate is met.**
+
 Tasks:
 
 - Validate extension payloads against the Flask API contract with representative manual boards for early, middle, and late rounds.

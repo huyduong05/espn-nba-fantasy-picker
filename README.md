@@ -75,6 +75,24 @@ The remaining pool, snake direction, round, and pick are derived from that board
 the board only in the current browser session, reads no ESPN page data, and requests suggestions
 only when you select **Suggest picks**.
 
+Each suggestion also checks the local API metadata. If the oldest projections, reference, or injury
+artifact is seven days old, the panel warns but still lets you explicitly request advice. If the
+service is offline, takes more than five seconds, or rejects the board, the panel retains the board,
+explains the problem, and offers **Retry suggestions**; it never retries automatically.
+
+## Phase 10 target-Mac benchmark
+
+With the generated extension loaded and the local service running, open
+`chrome-extension://<your-extension-id>/benchmark.html`. The page runs 30 valid early-, middle-,
+and late-round boards through the real extension worker and localhost API, then prints JSON p50/p95
+timings for search, board derivation, JSON serialization, API round trip, server scoring, rendering,
+and click-to-render total. Save that output with the draft preparation record.
+
+For the offline rehearsal, open this page after the extension and service are ready, disconnect the
+Mac from external networking, and run it again. It must succeed without ESPN or any other remote
+request. The recorded p95 targets are: manual-board validation ≤0.1 s, localhost request ≤0.2 s,
+candidate scoring ≤4 s, rendering ≤0.5 s, and total click-to-render <10 s.
+
 ## Phase 5 injury and availability assessments
 
 Once identity-resolved injury events are available locally, generate a dated

@@ -15,7 +15,7 @@ await access(generatedIndex).catch(() => {
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await build({
-  entryPoints: ["src/content.ts", "src/background.ts"],
+  entryPoints: ["src/content.ts", "src/background.ts", "src/benchmark.ts"],
   bundle: true,
   format: "esm",
   outdir: output,
@@ -27,3 +27,7 @@ await cp(
   path.join(output, "manifest.json"),
 );
 await cp(generatedIndex, path.join(output, "player-index.json"));
+await cp(
+  path.join(directory, "benchmark.html"),
+  path.join(output, "benchmark.html"),
+);

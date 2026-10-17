@@ -42,4 +42,51 @@ describe("manual board panel", () => {
     expect(requests).toBe(0);
     mounted.destroy();
   });
+
+  it("keeps the board and offers an explicit retry after a failed request", async () => {
+    let requests = 0;
+    const boards: unknown[] = [];
+    const mounted = mountPanel(document, index, {
+      loadBoard: async () => emptyBoard(),
+      saveBoard: async () => undefined,
+      suggest: async (board) => {
+        requests += 1;
+        boards.push(board);
+        throw new Error("The local recommendation service is unavailable.");
+      },
+    });
+    await Promise.resolve();
+    const root = mounted.host.shadowRoot!;
+    const slot = root.querySelector(
+      'select[aria-label="My draft slot"]',
+    ) as HTMLSelectElement;
+    slot.value = "1";
+    slot.dispatchEvent(new Event("change"));
+    await Promise.resolve();
+
+    const suggest = [...root.querySelectorAll("button")].find(
+      (button) => button.textContent === "Suggest picks",
+    ) as HTMLButtonElement;
+    suggest.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await new Promise<void>((resolve) => setTimeout(resolve));
+
+    const retry = [...root.querySelectorAll("button")].find(
+      (button) => button.textContent === "Retry suggestions",
+    ) as HTMLButtonElement;
+    expect(retry.hidden).toBe(false);
+    expect(root.textContent).toContain("service is unavailable");
+    retry.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await new Promise<void>((resolve) => setTimeout(resolve));
+
+    expect(requests).toBe(2);
+    expect(boards).toEqual([
+      { draft_slot: 1, roster_ids: [], taken_ids: [] },
+      { draft_slot: 1, roster_ids: [], taken_ids: [] },
+    ]);
+    mounted.destroy();
+  });
 });

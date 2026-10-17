@@ -75,6 +75,17 @@ export interface RecommendationRequestMessage {
   draft_state: DraftState;
 }
 
+export interface MetadataRequestMessage {
+  type: "metadata";
+}
+
+export type ExtensionRequestMessage =
+  RecommendationRequestMessage | MetadataRequestMessage;
+
 export type RecommendationResponseMessage =
   | { ok: true; response: unknown }
+  | { ok: false; code: string; message: string };
+
+export type MetadataResponseMessage =
+  | { ok: true; metadata: unknown }
   | { ok: false; code: string; message: string };

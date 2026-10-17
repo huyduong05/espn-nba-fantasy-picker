@@ -17,6 +17,8 @@ from fantasy_picker.ranking.recommender import (
     _scarcity,
     _score_candidates,
     load_recommender_config,
+    prepare_recommendation_resources,
+    recommend_prepared,
     recommend_with_details,
 )
 
@@ -50,6 +52,20 @@ def test_recommendations_are_schema_valid_with_local_category_evidence() -> None
     assert len(details) == 6
     assert set(details[0]["components"]["category_deltas"]) == set(CATEGORIES)
     assert "survival_probability" in details[0]["components"]
+
+
+def test_prepared_resources_reuse_static_indexes_and_data_version() -> None:
+    projections, state = _inputs()
+    resources = prepare_recommendation_resources(
+        projections, _reference(), _assessments(projections), _config()
+    )
+
+    first = recommend_prepared(state, resources)
+    second = recommend_prepared(state, resources)
+
+    assert len(resources.projection_by_id) == len(projections)
+    assert len(resources.category_values_by_id) == len(projections)
+    assert first["data_version"] == resources.data_version == second["data_version"]
 
 
 def test_positional_scarcity_uses_currently_unfilled_starter_slots() -> None:

@@ -2,6 +2,7 @@ import {
   SCHEMA_VERSION,
   type RecommendationResponse,
   type RecommendationResponseMessage,
+  type MetadataResponseMessage,
 } from "./contracts.js";
 
 const CATEGORIES = new Set([
@@ -68,6 +69,31 @@ export function serverMessage(value: unknown): RecommendationResponseMessage {
     ok: false,
     code: "INVALID_EXTENSION_RESPONSE",
     message: "The extension worker returned an invalid response.",
+  };
+}
+
+export function metadataMessage(value: unknown): MetadataResponseMessage {
+  if (!isRecord(value) || typeof value.ok !== "boolean") {
+    return {
+      ok: false,
+      code: "INVALID_EXTENSION_RESPONSE",
+      message: "The extension worker returned invalid metadata.",
+    };
+  }
+  if (value.ok === true && "metadata" in value) {
+    return { ok: true, metadata: value.metadata };
+  }
+  if (
+    value.ok === false &&
+    typeof value.code === "string" &&
+    typeof value.message === "string"
+  ) {
+    return { ok: false, code: value.code, message: value.message };
+  }
+  return {
+    ok: false,
+    code: "INVALID_EXTENSION_RESPONSE",
+    message: "The extension worker returned invalid metadata.",
   };
 }
 

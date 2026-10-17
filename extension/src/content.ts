@@ -1,9 +1,14 @@
-import { serverMessage, validateRecommendationResponse } from "./api.js";
+import {
+  metadataMessage,
+  serverMessage,
+  validateRecommendationResponse,
+} from "./api.js";
 import type {
   ManualBoardState,
   PlayerIndex,
   RecommendationResponse,
 } from "./contracts.js";
+import { assessFreshness, type Freshness } from "./freshness.js";
 import { deriveDraftState } from "./manual-board.js";
 import { mountPanel } from "./panel.js";
 import { loadBoard, saveBoard } from "./storage.js";
@@ -33,19 +38,23 @@ async function loadIndex(): Promise<PlayerIndex> {
 async function suggest(
   index: PlayerIndex,
   board: ManualBoardState,
-): Promise<RecommendationResponse> {
+): Promise<{ response: RecommendationResponse; freshness: Freshness }> {
   const state = deriveDraftState(index, board);
   if (!state.ok) {
     throw new Error(state.message);
   }
-  const workerResponse = serverMessage(
-    await chrome.runtime.sendMessage({
+  const [recommendationValue, metadataValue] = await Promise.all([
+    chrome.runtime.sendMessage({
       type: "recommend",
       draft_state: state.draftState,
     }),
-  );
+    chrome.runtime.sendMessage({ type: "metadata" }),
+  ]);
+  const workerResponse = serverMessage(recommendationValue);
   if (!workerResponse.ok) {
-    throw new Error(workerResponse.message);
+    throw new Error(
+      recoveryMessage(workerResponse.code, workerResponse.message),
+    );
   }
   const response = validateRecommendationResponse(workerResponse.response);
   if (!response) {
@@ -53,7 +62,22 @@ async function suggest(
       "The local service returned an invalid recommendation response.",
     );
   }
-  return response;
+  const metadata = metadataMessage(metadataValue);
+  const freshness =
+    metadata.ok === true
+      ? assessFreshness(metadata.metadata)
+      : assessFreshness(null);
+  return { response, freshness };
+}
+
+function recoveryMessage(code: string, message: string): string {
+  if (code === "SERVICE_TIMEOUT") {
+    return `${message} Verify the local service is running, then retry.`;
+  }
+  if (code === "SERVICE_UNAVAILABLE") {
+    return `${message} Start fantasy-picker serve, then retry.`;
+  }
+  return message;
 }
 
 function isPlayerIndex(value: unknown): value is PlayerIndex {
